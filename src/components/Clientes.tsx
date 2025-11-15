@@ -98,7 +98,7 @@ const mockClientes: Cliente[] = [
   },
   {
     id: "2",
-    nombre: "Patricia Hernández",
+    nombre: "My friend Hernández",
     empresa: "Industrias del Bajío",
     email: "patricia@industrias.com",
     telefono: "+52 987 654 3210",
