@@ -34,12 +34,63 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
   const [password, setPassword] = useState("");
   const [selectedEmpresa, setSelectedEmpresa] = useState<string>("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const empresaActual = empresas.find(e => e.id === selectedEmpresa);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(empresaActual?.nombre || "Acerored");
+    setErrorMessage("");
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        "https://hook.us2.make.com/v9osel66uty4b5wjafv1pupqk4qk4b2n",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            password,
+            rememberMe,
+            empresa: empresaActual?.nombre || "Acerored",
+          }),
+        }
+      );
+
+      const data = await response.json().catch(() => undefined);
+      const isPositiveResponse =
+        response.ok &&
+        (data === undefined
+          ? true
+          : typeof data === "object"
+            ? "success" in data
+              ? Boolean((data as { success: unknown }).success)
+              : "ok" in data
+                ? Boolean((data as { ok: unknown }).ok)
+                : "status" in data
+                  ? (data as { status: unknown }).status === "success"
+                  : "result" in data
+                    ? (data as { result: unknown }).result === "positive" ||
+                      (data as { result: unknown }).result === "success"
+                    : true
+            : true);
+
+      if (!isPositiveResponse) {
+        setErrorMessage("Algo está mal. Intenta de nuevo.");
+        return;
+      }
+
+      onLogin(empresaActual?.nombre || "Acerored");
+    } catch (error) {
+      console.error("Error al iniciar sesión:", error);
+      setErrorMessage("Algo está mal. Intenta de nuevo.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -139,9 +190,13 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
               </button>
             </div>
 
-            <Button type="submit" className="w-full">
-              Iniciar sesión
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Validando..." : "Iniciar sesión"}
             </Button>
+
+            {errorMessage && (
+              <p className="text-sm text-red-600 text-center">{errorMessage}</p>
+            )}
           </form>
 
           {/* Divider */}
