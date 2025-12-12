@@ -371,11 +371,11 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
 
     if (!cliente) {
       return (
-        <div className="space-y-6 text-blue-700">
+        <div className="space-y-6 text-black">
           <div>
             <button
               onClick={() => onClienteDetalleClose && onClienteDetalleClose()}
-              className="text-blue-500 hover:text-blue-700 underline flex items-center gap-1 transition-colors mb-4"
+              className="text-black hover:text-black underline flex items-center gap-1 transition-colors mb-4"
             >
               <ChevronLeft className="w-4 h-4" />
               Volver a Clientes
@@ -390,67 +390,67 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
     }
 
     return (
-      <div className="space-y-6 text-blue-700">
+      <div className="space-y-6 text-black">
         {/* Breadcrumb */}
         <div>
           <button
             onClick={() => onClienteDetalleClose && onClienteDetalleClose()}
-            className="text-blue-500 hover:text-blue-700 underline flex items-center gap-1 transition-colors mb-4"
+            className="text-black hover:text-black underline flex items-center gap-1 transition-colors mb-4"
           >
             <ChevronLeft className="w-4 h-4" />
             Volver a Clientes
           </button>
           <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl text-blue-700">{cliente.nombre}</h1>
+            <h1 className="text-3xl text-black">{cliente.nombre}</h1>
             {getEstadoPagosBadge(cliente.estadoPagos)}
           </div>
-          <p className="text-blue-500">{cliente.empresa}</p>
+          <p className="text-black">{cliente.empresa}</p>
         </div>
 
         {/* Información General */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-blue-700">Información General</CardTitle>
+            <CardTitle className="text-black">Información General</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div>
-                <p className="text-sm text-blue-500 mb-1">RFC</p>
+                <p className="text-sm text-black mb-1">RFC</p>
                 <p>{cliente.rfc}</p>
               </div>
               <div>
-                <p className="text-sm text-blue-500 mb-1">Región</p>
+                <p className="text-sm text-black mb-1">Región</p>
                 <p>{cliente.region}</p>
               </div>
               <div>
-                <p className="text-sm text-blue-500 mb-1">Ejecutivo Asignado</p>
+                <p className="text-sm text-black mb-1">Ejecutivo Asignado</p>
                 <p>{cliente.ejecutivoAsignado}</p>
               </div>
               <div>
-                <p className="text-sm text-blue-500 mb-1">Cliente desde</p>
+                <p className="text-sm text-black mb-1">Cliente desde</p>
                 <p>{new Date(cliente.fechaRegistro).toLocaleDateString("es-MX")}</p>
               </div>
             </div>
             <Separator className="my-4" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-start gap-2">
-                <Mail className="w-4 h-4 text-blue-500 mt-1" />
+                <Mail className="w-4 h-4 text-black mt-1" />
                 <div>
-                  <p className="text-sm text-blue-500">Email</p>
+                  <p className="text-sm text-black">Email</p>
                   <p>{cliente.email}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
-                <Phone className="w-4 h-4 text-blue-500 mt-1" />
+                <Phone className="w-4 h-4 text-black mt-1" />
                 <div>
-                  <p className="text-sm text-blue-500">Teléfono</p>
+                  <p className="text-sm text-black">Teléfono</p>
                   <p>{cliente.telefono}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2 md:col-span-2">
-                <MapPin className="w-4 h-4 text-blue-500 mt-1" />
+                <MapPin className="w-4 h-4 text-black mt-1" />
                 <div>
-                  <p className="text-sm text-blue-500">Dirección</p>
+                  <p className="text-sm text-black">Dirección</p>
                   <p>{cliente.direccion}</p>
                 </div>
               </div>
@@ -463,10 +463,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
-                <DollarSign className="w-5 h-5 text-blue-500" />
-                <p className="text-sm text-blue-500">Total Compras</p>
+                <DollarSign className="w-5 h-5 text-black" />
+                <p className="text-sm text-black">Total Compras</p>
               </div>
-              <p className="text-2xl text-blue-700">
+              <p className="text-2xl text-black">
                 ${cliente.totalCompras.toLocaleString("es-MX")}
               </p>
             </CardContent>
@@ -474,13 +474,13 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
-                <CreditCard className="w-5 h-5 text-blue-500" />
-                <p className="text-sm text-blue-500">Crédito Disponible</p>
+                <CreditCard className="w-5 h-5 text-black" />
+                <p className="text-sm text-black">Crédito Disponible</p>
               </div>
-              <p className="text-2xl text-blue-700">
+              <p className="text-2xl text-black">
                 ${cliente.creditoDisponible.toLocaleString("es-MX")}
               </p>
-              <p className="text-sm text-blue-500">
+              <p className="text-sm text-black">
                 de ${cliente.limiteCredito.toLocaleString("es-MX")}
               </p>
             </CardContent>
@@ -488,10 +488,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
-                <FileText className="w-5 h-5 text-blue-500" />
-                <p className="text-sm text-blue-500">Cotizaciones Activas</p>
+                <FileText className="w-5 h-5 text-black" />
+                <p className="text-sm text-black">Cotizaciones Activas</p>
               </div>
-              <p className="text-2xl text-blue-700">{cliente.cotizacionesActivas}</p>
+              <p className="text-2xl text-black">{cliente.cotizacionesActivas}</p>
             </CardContent>
           </Card>
         </div>
@@ -510,7 +510,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <TabsContent value="compras" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-blue-700">Historial de Compras</CardTitle>
+                <CardTitle className="text-black">Historial de Compras</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -554,7 +554,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <TabsContent value="cotizaciones" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-blue-700">Cotizaciones</CardTitle>
+                <CardTitle className="text-black">Cotizaciones</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -601,7 +601,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <TabsContent value="pagos" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-blue-700">Historial de Pagos</CardTitle>
+                <CardTitle className="text-black">Historial de Pagos</CardTitle>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -645,7 +645,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <TabsContent value="preferencias" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-blue-700">
+                <CardTitle className="text-black">
                   Productos Más Comprados
                 </CardTitle>
               </CardHeader>
@@ -657,10 +657,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                       className="flex items-center justify-between p-3 border rounded-lg"
                     >
                       <div className="flex items-center gap-3">
-                        <Package className="w-5 h-5 text-blue-500" />
+                        <Package className="w-5 h-5 text-black" />
                         <div>
                           <p className="font-medium">{pref.nombre}</p>
-                          <p className="text-sm text-blue-500">
+                          <p className="text-sm text-black">
                             Última compra:{" "}
                             {new Date(pref.ultimaCompra).toLocaleDateString("es-MX")}
                           </p>
@@ -677,7 +677,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-blue-700">Notas</CardTitle>
+                  <CardTitle className="text-black">Notas</CardTitle>
                   <Button size="sm" variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
                     Agregar Nota
@@ -692,10 +692,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                       className="p-4 border rounded-lg bg-muted/30"
                     >
                       <div className="flex items-start gap-3">
-                        <StickyNote className="w-5 h-5 text-blue-500 mt-1" />
+                        <StickyNote className="w-5 h-5 text-black mt-1" />
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm text-blue-500">
+                            <p className="text-sm text-black">
                               {nota.autor} •{" "}
                               {new Date(nota.fecha).toLocaleDateString("es-MX")}
                             </p>
@@ -715,7 +715,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-blue-700">
+                  <CardTitle className="text-black">
                     Documentos Adjuntos
                   </CardTitle>
                   <Button size="sm" variant="outline">
@@ -732,10 +732,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                       className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/30 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <Paperclip className="w-5 h-5 text-blue-500" />
+                        <Paperclip className="w-5 h-5 text-black" />
                         <div>
                           <p className="font-medium">{doc.nombre}</p>
-                          <p className="text-sm text-blue-500">
+                          <p className="text-sm text-black">
                             {doc.tipo} • {doc.tamaño} •{" "}
                             {new Date(doc.fecha).toLocaleDateString("es-MX")}
                           </p>
@@ -761,12 +761,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
   }
 
   return (
-    <div className="space-y-6 text-blue-700">
+    <div className="space-y-6 text-black">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl mb-2 text-blue-700">Clientes</h1>
-          <p className="text-blue-500">
+          <h1 className="text-3xl mb-2 text-black">Clientes</h1>
+          <p className="text-black">
             Gestiona tu cartera de clientes y su historial comercial
           </p>
         </div>
@@ -779,10 +779,10 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           </DialogTrigger>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-blue-700">
+              <DialogTitle className="text-black">
                 Registrar Nuevo Cliente
               </DialogTitle>
-              <DialogDescription className="text-blue-500">
+              <DialogDescription className="text-black">
                 Completa la información del nuevo cliente para agregarlo al sistema
               </DialogDescription>
             </DialogHeader>
@@ -831,7 +831,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                       <SelectItem value="occidente">Occidente</SelectItem>
                     </SelectContent>
                   </Select>
-                  <label className="absolute left-3 top-0 text-xs -translate-y-1/2 bg-popover px-1 text-blue-500 pointer-events-none z-10">
+                  <label className="absolute left-3 top-0 text-xs -translate-y-1/2 bg-popover px-1 text-black pointer-events-none z-10">
                     Región
                   </label>
                 </div>
@@ -860,7 +860,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                       <SelectItem value="luis">Luis Torres</SelectItem>
                     </SelectContent>
                   </Select>
-                  <label className="absolute left-3 top-0 text-xs -translate-y-1/2 bg-popover px-1 text-blue-500 pointer-events-none z-10">
+                  <label className="absolute left-3 top-0 text-xs -translate-y-1/2 bg-popover px-1 text-black pointer-events-none z-10">
                     Ejecutivo Asignado
                   </label>
                 </div>
@@ -902,12 +902,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <Users className="w-5 h-5 text-[#4285F4]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   {totalClientes}
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Clientes Totales
             </p>
           </CardContent>
@@ -919,12 +919,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <Plus className="w-5 h-5 text-[#1E88E5]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   {nuevosClientes}
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Nuevos (30 días)
             </p>
           </CardContent>
@@ -936,12 +936,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <CheckCircle2 className="w-5 h-5 text-[#10B981]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   {clientesActivos}
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Clientes Activos
             </p>
           </CardContent>
@@ -953,12 +953,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <XCircle className="w-5 h-5 text-[#9CA3AF]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   {clientesInactivos}
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Clientes Inactivos
             </p>
           </CardContent>
@@ -970,12 +970,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <DollarSign className="w-5 h-5 text-[#F59E0B]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   ${valorTotalYTD}M
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Valor Total (YTD)
             </p>
           </CardContent>
@@ -987,12 +987,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <CreditCard className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   ${ticketPromedio}K
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Ticket Promedio
             </p>
           </CardContent>
@@ -1004,12 +1004,12 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                 <Repeat className="w-5 h-5 text-[#F97316]" />
               </div>
               <div className="text-right">
-                <p className="text-[28px] font-semibold text-blue-700">
+                <p className="text-[28px] font-semibold text-black">
                   {tasaRetencion}%
                 </p>
               </div>
             </div>
-            <p className="text-sm text-blue-500 text-center mt-2">
+            <p className="text-sm text-black text-center mt-2">
               Tasa de Retención
             </p>
           </CardContent>
@@ -1019,7 +1019,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
       {/* Filtros */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-blue-700">
+          <CardTitle className="flex items-center gap-2 text-black">
             <Filter className="w-5 h-5" />
             Filtros y Búsqueda
           </CardTitle>
@@ -1028,7 +1028,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="md:col-span-2">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-black" />
                 <Input
                   placeholder="Buscar por nombre, empresa o email..."
                   value={searchTerm}
@@ -1086,7 +1086,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
       {/* Tabla de Clientes */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-blue-700">
+          <CardTitle className="text-black">
             Cartera de Clientes ({filteredClientes.length})
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -1126,7 +1126,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                     <TableCell>
                       <div>
                         <p className="font-medium">{cliente.nombre}</p>
-                        <p className="text-sm text-blue-500">
+                        <p className="text-sm text-black">
                           {cliente.empresa}
                         </p>
                       </div>
@@ -1134,11 +1134,11 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                     <TableCell>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm">
-                          <Mail className="w-3 h-3 text-blue-500" />
+                          <Mail className="w-3 h-3 text-black" />
                           <span>{cliente.email}</span>
                         </div>
                         <div className="flex items-center gap-2 text-sm">
-                          <Phone className="w-3 h-3 text-blue-500" />
+                          <Phone className="w-3 h-3 text-black" />
                           <span>{cliente.telefono}</span>
                         </div>
                       </div>
@@ -1163,7 +1163,7 @@ export function Clientes({ onNavigate, clienteDetalleId, onClienteDetalleClose }
                         <p>
                           ${cliente.creditoDisponible.toLocaleString("es-MX")}
                         </p>
-                        <p className="text-blue-500">
+                        <p className="text-black">
                           de ${cliente.limiteCredito.toLocaleString("es-MX")}
                         </p>
                       </div>
