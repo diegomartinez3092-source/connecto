@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Building2,
   LogOut,
+  Bot,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import { Button } from "./ui/button";
@@ -36,6 +37,7 @@ const navigationItems: NavItem[] = [
   { title: "Clientes", icon: UserCircle, href: "clientes" },
   { title: "Pipeline", icon: GitBranch, href: "pipeline" },
   { title: "Productos y Servicios", icon: Package, href: "productos-servicios" },
+  { title: "Empleados Digitales", icon: Bot, href: "empleados-digitales" },
 ];
 
 export function AppSidebar({ currentView, onNavigate, empresaNombre, onLogout }: AppSidebarProps) {
