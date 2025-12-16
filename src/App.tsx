@@ -13,6 +13,7 @@ import { Facturacion } from "./components/Facturacion";
 import { Reportes } from "./components/Reportes";
 import { OtrasSecciones } from "./components/OtrasSecciones";
 import { UsuariosYRoles } from "./components/UsuariosYRoles";
+import { EmpleadosDigitales } from "./components/EmpleadosDigitales";
 import { Toaster } from "./components/ui/sonner";
 
 export default function App() {
@@ -87,6 +88,8 @@ export default function App() {
         currentView={
           currentView.startsWith("cliente-detalle-")
             ? "clientes"
+            : currentView.startsWith("empleados-digitales-")
+            ? "empleados-digitales"
             : currentView
         }
         onNavigate={setCurrentView}
@@ -130,6 +133,10 @@ export default function App() {
           {currentView === "pipeline" && <Pipeline />}
           {currentView === "facturacion" && <Facturacion />}
           {currentView === "reportes" && <Reportes />}
+          {(currentView === "empleados-digitales" ||
+            currentView.startsWith("empleados-digitales-")) && (
+            <EmpleadosDigitales view={currentView} onNavigate={setCurrentView} />
+          )}
           {currentView === "documentos" && (
             <OtrasSecciones seccion="documentos" />
           )}
