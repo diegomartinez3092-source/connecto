@@ -1,4 +1,8 @@
-export type DigitalEmployeeId = "marketing" | "ventas" | "cajero";
+export type DigitalEmployeeId =
+  | "marketing"
+  | "ventas"
+  | "cajero"
+  | "vendedor-digital";
 
 export interface ActivityItem {
   title: string;
@@ -70,6 +74,30 @@ export const insights = [
 ];
 
 export const digitalEmployees: DigitalEmployee[] = [
+  {
+    id: "vendedor-digital",
+    name: "Vendedor digital",
+    status: "active",
+    availability: "Activo",
+    description:
+      "Cierra ventas 24/7: atiende, cotiza, da seguimiento y empuja a pago.",
+    headline: "Atiende, cotiza y empuja a pago sin fricción",
+    kpis: [
+      { label: "Conversaciones hoy", value: "—" },
+      { label: "Leads hoy", value: "—" },
+      { label: "Resp. <2m", value: "—" },
+    ],
+    detailMetrics: [
+      { label: "Conversaciones hoy", value: "—" },
+      { label: "Leads hoy", value: "—" },
+      { label: "Respuesta <2m", value: "—" },
+      { label: "Pagos confirmados", value: "—" },
+    ],
+    actions: ["Ver dashboard", "Configurar"],
+    recentActivity: [
+      { title: "Modo demo", meta: "Conecta tus canales para ver actividad" },
+    ],
+  },
   {
     id: "marketing",
     name: "Especialista de Marketing",
