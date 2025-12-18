@@ -42,11 +42,17 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (!email || !password) {
+      setErrorMessage("Ingresa tu correo y contraseña.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const response = await fetch(
-        "https://hook.us2.make.com/v9osel66uty4b5wjafv1pupqk4qk4b2n",
+        "https://hook.us2.make.com/21cdpxohjmh3bs7ae5l5mo6kzajwpx99",
         {
           method: "POST",
           headers: {
@@ -55,39 +61,31 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
           body: JSON.stringify({
             email,
             password,
-            rememberMe,
-            empresa: empresaActual?.nombre || "Acerored",
           }),
         }
       );
 
-      const data = await response.json().catch(() => undefined);
-      const isPositiveResponse =
-        response.ok &&
-        (data === undefined
-          ? true
-          : typeof data === "object"
-            ? "success" in data
-              ? Boolean((data as { success: unknown }).success)
-              : "ok" in data
-                ? Boolean((data as { ok: unknown }).ok)
-                : "status" in data
-                  ? (data as { status: unknown }).status === "success"
-                  : "result" in data
-                    ? (data as { result: unknown }).result === "positive" ||
-                      (data as { result: unknown }).result === "success"
-                    : true
-            : true);
+      const data = (await response.json().catch(() => undefined)) as
+        | { ok?: boolean; error?: string }
+        | undefined;
 
-      if (!isPositiveResponse) {
-        setErrorMessage("Algo está mal. Intenta de nuevo.");
+      if (!response.ok) {
+        setErrorMessage(
+          data?.error ||
+            "No pudimos validar tus credenciales. Inténtalo de nuevo."
+        );
+        return;
+      }
+
+      if (!data?.ok) {
+        setErrorMessage(data?.error || "Correo o contraseña incorrectos.");
         return;
       }
 
       onLogin(empresaActual?.nombre || "Acerored");
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
-      setErrorMessage("Algo está mal. Intenta de nuevo.");
+      setErrorMessage("No pudimos validar tus credenciales. Inténtalo de nuevo.");
     } finally {
       setIsSubmitting(false);
     }

@@ -21,6 +21,8 @@ import {
   type DigitalEmployee,
   type DigitalEmployeeId,
 } from "../data/digitalEmployees";
+import { DashboardPage } from "./vendedor-digital/DashboardPage";
+import { ConfigPage } from "./vendedor-digital/ConfigPage";
 import {
   Activity,
   ArrowUpRight,
@@ -46,14 +48,36 @@ const statusStyles: Record<DigitalEmployee["status"], string> = {
 
 export function EmpleadosDigitales({ view, onNavigate }: EmpleadosDigitalesProps) {
   const isDetail = view.startsWith("empleados-digitales-");
+  const isVendedorDigitalDashboard =
+    view === "empleados-digitales-vendedor-digital";
+  const isVendedorDigitalConfig =
+    view === "empleados-digitales-vendedor-digital-configuracion";
   const employeeId = isDetail
     ? (view.replace("empleados-digitales-", "") as DigitalEmployeeId)
     : undefined;
 
-  const employee = useMemo(
-    () => digitalEmployees.find((item) => item.id === employeeId),
-    [employeeId]
-  );
+  const employee = useMemo(() => {
+    if (isVendedorDigitalDashboard || isVendedorDigitalConfig) return undefined;
+    return digitalEmployees.find((item) => item.id === employeeId);
+  }, [employeeId, isVendedorDigitalConfig, isVendedorDigitalDashboard]);
+
+  if (isVendedorDigitalDashboard) {
+    return (
+      <DashboardPage
+        onNavigateConfig={() =>
+          onNavigate("empleados-digitales-vendedor-digital-configuracion")
+        }
+      />
+    );
+  }
+
+  if (isVendedorDigitalConfig) {
+    return (
+      <ConfigPage
+        onBack={() => onNavigate("empleados-digitales-vendedor-digital")}
+      />
+    );
+  }
 
   if (isDetail && employee) {
     return <EmpleadoDetalle empleado={employee} onNavigate={onNavigate} />;
@@ -114,14 +138,20 @@ function EmpleadosDigitalesHome({
 
       <div className="grid gap-6 xl:grid-cols-4">
         <div className="xl:col-span-3 space-y-4">
-          {digitalEmployees.map((employee) => (
-            <Card
-              key={employee.id}
-              className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => onNavigate(`empleados-digitales-${employee.id}`)}
-            >
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+          {digitalEmployees.map((employee) => {
+            const destination =
+              employee.id === "vendedor-digital"
+                ? "empleados-digitales-vendedor-digital"
+                : `empleados-digitales-${employee.id}`;
+
+            return (
+              <Card
+                key={employee.id}
+                className="hover:shadow-lg transition-shadow cursor-pointer"
+              onClick={() => onNavigate(destination)}
+              >
+                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
                   <div className="flex items-center gap-2">
                     <Badge className={cn("border", statusStyles[employee.status])}>
                       {employee.availability}
@@ -158,7 +188,7 @@ function EmpleadosDigitalesHome({
                       className="gap-2"
                       onClick={(e) => {
                         e.stopPropagation();
-                        onNavigate(`empleados-digitales-${employee.id}`);
+                        onNavigate(destination);
                       }}
                     >
                       <ExternalLink className="h-4 w-4" /> {action}
@@ -167,7 +197,8 @@ function EmpleadosDigitalesHome({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
 
         <div className="space-y-3">
