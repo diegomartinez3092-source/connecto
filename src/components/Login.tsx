@@ -7,7 +7,7 @@ import { Building2 } from "lucide-react";
 import { cn } from "./ui/utils";
 
 interface LoginProps {
-  onLogin: (empresaNombre: string) => void;
+  onLogin: (empresaNombre: string, email: string) => void;
   onShowRegister: () => void;
   onShowForgotPassword: () => void;
 }
@@ -43,6 +43,9 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
     e.preventDefault();
     setErrorMessage("");
 
+    const normalizedEmail = email.trim();
+
+    if (!normalizedEmail || !password) {
     if (!email || !password) {
       setErrorMessage("Ingresa tu correo y contraseña.");
       return;
@@ -59,7 +62,7 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email,
+            email: normalizedEmail,
             password,
           }),
         }
@@ -82,7 +85,7 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
         return;
       }
 
-      onLogin(empresaActual?.nombre || "Acerored");
+      onLogin(empresaActual?.nombre || "Acerored", normalizedEmail);
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
       setErrorMessage("No pudimos validar tus credenciales. Inténtalo de nuevo.");

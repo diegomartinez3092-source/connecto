@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AppSidebar } from "./components/AppSidebar";
 import { Login } from "./components/Login";
 import { Register } from "./components/Register";
@@ -26,16 +26,62 @@ export default function App() {
     useState("Acerored");
   const [isNewCotizacionMode, setIsNewCotizacionMode] =
     useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userName, setUserName] = useState("Usuario");
+  const [userRole, setUserRole] = useState("Invitado");
+
+  const fetchUserProfile = useCallback(
+    async (email: string) => {
+      try {
+        const response = await fetch(
+          "https://hook.us2.make.com/t5yit0qglt76fuqgdrtzbtcp4f3spzgv",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email }),
+          }
+        );
+
+        const data = (await response
+          .json()
+          .catch(() => undefined)) as
+          | { ok?: boolean; Nombre?: string; Puesto?: string }
+          | undefined;
+
+        if (!response.ok || !data?.ok) {
+          setUserName("Usuario");
+          setUserRole("Invitado");
+          return;
+        }
+
+        setUserName(data.Nombre || "Usuario");
+        setUserRole(data.Puesto || "Invitado");
+      } catch (error) {
+        console.error("Error al cargar perfil de usuario", error);
+        setUserName("Usuario");
+        setUserRole("Invitado");
+      }
+    },
+    []
+  );
 
   // Auth handlers
-  const handleLogin = (empresaNombre: string) => {
+  const handleLogin = (empresaNombre: string, email: string) => {
     setSelectedEmpresa(empresaNombre);
+    setUserEmail(email);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("selectedEmpresa", empresaNombre);
     setIsAuthenticated(true);
     setShowRegister(false);
     setShowForgotPassword(false);
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("selectedEmpresa");
+    setUserEmail(null);
+    setUserName("Usuario");
+    setUserRole("Invitado");
     setIsAuthenticated(false);
     setCurrentView("dashboard");
   };
@@ -46,6 +92,25 @@ export default function App() {
     setShowRegister(false);
     setShowForgotPassword(false);
   };
+
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("userEmail");
+    const storedEmpresa = localStorage.getItem("selectedEmpresa");
+
+    if (storedEmail) {
+      setUserEmail(storedEmail);
+      setSelectedEmpresa(storedEmpresa || "Acerored");
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated && userEmail) {
+      fetchUserProfile(userEmail);
+    } else if (isAuthenticated && !userEmail) {
+      setIsAuthenticated(false);
+    }
+  }, [fetchUserProfile, isAuthenticated, userEmail]);
 
   // Reset nueva cotización mode when changing views
   useEffect(() => {
@@ -95,6 +160,8 @@ export default function App() {
         onNavigate={setCurrentView}
         empresaNombre={selectedEmpresa}
         onLogout={handleLogout}
+        userName={userName}
+        userRole={userRole}
       />
 
       {/* Main Content */}
