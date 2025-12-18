@@ -30,40 +30,34 @@ export default function App() {
   const [userName, setUserName] = useState("Usuario");
   const [userRole, setUserRole] = useState("Invitado");
 
-  const fetchUserProfile = useCallback(
-    async (email: string) => {
-      try {
-        const response = await fetch(
-          "https://hook.us2.make.com/t5yit0qglt76fuqgdrtzbtcp4f3spzgv",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-          }
-        );
-
-        const data = (await response
-          .json()
-          .catch(() => undefined)) as
-          | { ok?: boolean; Nombre?: string; Puesto?: string }
-          | undefined;
-
-        if (!response.ok || !data?.ok) {
-          setUserName("Usuario");
-          setUserRole("Invitado");
-          return;
+  const fetchUserProfile = useCallback(async (email: string) => {
+    try {
+      const response = await fetch(
+        "https://hook.us2.make.com/t5yit0qglt76fuqgdrtzbtcp4f3spzgv",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
         }
+      );
 
+      const data = (await response.json().catch(() => undefined)) as
+        | { ok?: boolean; Nombre?: string; Puesto?: string }
+        | undefined;
+
+      if (data?.ok) {
         setUserName(data.Nombre || "Usuario");
         setUserRole(data.Puesto || "Invitado");
-      } catch (error) {
-        console.error("Error al cargar perfil de usuario", error);
+      } else {
         setUserName("Usuario");
         setUserRole("Invitado");
       }
-    },
-    []
-  );
+    } catch (error) {
+      console.error("Error al cargar perfil de usuario", error);
+      setUserName("Usuario");
+      setUserRole("Invitado");
+    }
+  }, []);
 
   // Auth handlers
   const handleLogin = (empresaNombre: string, email: string) => {
@@ -95,26 +89,23 @@ export default function App() {
   };
 
   useEffect(() => {
-    const storedEmail = localStorage.getItem("userEmail");
-    const storedEmpresa = localStorage.getItem("selectedEmpresa");
+    const fetchUserInfo = async () => {
+      const storedEmail = localStorage.getItem("userEmail");
+      const storedEmpresa = localStorage.getItem("selectedEmpresa");
 
-    if (storedEmail) {
+      if (!storedEmail) {
+        handleLogout();
+        return;
+      }
+
       setUserEmail(storedEmail);
       setSelectedEmpresa(storedEmpresa || "Acerored");
       setIsAuthenticated(true);
-      fetchUserProfile(storedEmail);
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, [fetchUserProfile]);
+      await fetchUserProfile(storedEmail);
+    };
 
-  useEffect(() => {
-    if (isAuthenticated && userEmail) {
-      fetchUserProfile(userEmail);
-    } else if (isAuthenticated && !userEmail) {
-      handleLogout();
-    }
-  }, [fetchUserProfile, handleLogout, isAuthenticated, userEmail]);
+    fetchUserInfo();
+  }, [fetchUserProfile, handleLogout]);
 
   // Reset nueva cotización mode when changing views
   useEffect(() => {
