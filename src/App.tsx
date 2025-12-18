@@ -74,9 +74,10 @@ export default function App() {
     setIsAuthenticated(true);
     setShowRegister(false);
     setShowForgotPassword(false);
+    fetchUserProfile(email);
   };
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem("userEmail");
     localStorage.removeItem("selectedEmpresa");
     setUserEmail(null);
@@ -84,7 +85,7 @@ export default function App() {
     setUserRole("Invitado");
     setIsAuthenticated(false);
     setCurrentView("dashboard");
-  };
+  }, []);
 
   const handleRegister = () => {
     setSelectedEmpresa("Acerored");
@@ -101,16 +102,19 @@ export default function App() {
       setUserEmail(storedEmail);
       setSelectedEmpresa(storedEmpresa || "Acerored");
       setIsAuthenticated(true);
+      fetchUserProfile(storedEmail);
+    } else {
+      setIsAuthenticated(false);
     }
-  }, []);
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     if (isAuthenticated && userEmail) {
       fetchUserProfile(userEmail);
     } else if (isAuthenticated && !userEmail) {
-      setIsAuthenticated(false);
+      handleLogout();
     }
-  }, [fetchUserProfile, isAuthenticated, userEmail]);
+  }, [fetchUserProfile, handleLogout, isAuthenticated, userEmail]);
 
   // Reset nueva cotización mode when changing views
   useEffect(() => {
