@@ -28,6 +28,8 @@ interface AppSidebarProps {
   onNavigate: (view: string) => void;
   empresaNombre: string;
   onLogout: () => void;
+  userName: string;
+  userRole: string;
 }
 
 const navigationItems: NavItem[] = [
@@ -40,8 +42,22 @@ const navigationItems: NavItem[] = [
   { title: "Empleados Digitales", icon: Bot, href: "empleados-digitales" },
 ];
 
-export function AppSidebar({ currentView, onNavigate, empresaNombre, onLogout }: AppSidebarProps) {
+export function AppSidebar({
+  currentView,
+  onNavigate,
+  empresaNombre,
+  onLogout,
+  userName,
+  userRole,
+}: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+
+  const initials = userName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase())
+    .join("") || "US";
 
   return (
     <div
@@ -125,11 +141,11 @@ export function AppSidebar({ currentView, onNavigate, empresaNombre, onLogout }:
           <>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                <span>RS</span>
+                <span>{initials}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">Roberto Sordo</p>
-                <p className="text-xs text-muted-foreground truncate">Administrador</p>
+                <p className="font-semibold truncate">{userName}</p>
+                <p className="text-xs text-muted-foreground truncate">{userRole}</p>
               </div>
             </div>
             <Button
@@ -144,7 +160,7 @@ export function AppSidebar({ currentView, onNavigate, empresaNombre, onLogout }:
         ) : (
           <>
             <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto">
-              <span>RS</span>
+              <span>{initials}</span>
             </div>
             <button
               onClick={onLogout}
