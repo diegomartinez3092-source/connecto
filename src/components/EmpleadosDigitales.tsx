@@ -46,6 +46,36 @@ const statusStyles: Record<DigitalEmployee["status"], string> = {
   alert: "bg-amber-100 text-amber-900 border-amber-200",
 };
 
+const statusLabels: Record<DigitalEmployee["status"], string> = {
+  active: "Operando",
+  alert: "Requiere atención",
+};
+
+const primaryCtas: Record<DigitalEmployeeId, string> = {
+  "vendedor-digital": "Abrir panel",
+  marketing: "Revisar campañas",
+  ventas: "Optimizar guiones",
+  cajero: "Ajustar cobros",
+};
+
+const secondaryActions: Record<DigitalEmployeeId, string[]> = {
+  "vendedor-digital": ["Probar respuesta", "Editar configuración"],
+  marketing: ["Ver leads", "Editar reglas", "Pausar campañas"],
+  ventas: ["Ver conversaciones", "Ajustar mensajes", "Revisar escalamiento"],
+  cajero: ["Revisar pendientes", "Editar métodos", "Actualizar plantillas"],
+};
+
+const insightDescriptions: Record<string, string> = {
+  "Optimiza el flujo de leads":
+    "Los leads con alto score se quedan en espera; enviarlos directo a Ventas acelera la conversión y mejora el tiempo de respuesta.",
+  "Presupuesto de campañas":
+    "El rendimiento del hook está bajando; ajustarlo puede elevar conversiones sin aumentar el CPL.",
+  "Pagos pendientes":
+    "Hay cobros sin comprobante; activar seguimiento en 24h ayuda a recuperar ventas y reducir rezagos.",
+  "Scripts de venta":
+    "Mensajes con demasiadas opciones frenan respuestas; un CTA claro acelera cierres.",
+};
+
 export function EmpleadosDigitales({ view, onNavigate }: EmpleadosDigitalesProps) {
   const isDetail = view.startsWith("empleados-digitales-");
   const isVendedorDigitalDashboard =
@@ -98,41 +128,52 @@ function EmpleadosDigitalesHome({
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary text-sm font-semibold">
             <Bot className="h-4 w-4" /> Centro de Empleados Digitales
           </div>
-          <h1 className="text-3xl font-bold mt-3">Empleados Digitales</h1>
+          <h1 className="text-3xl font-bold mt-3">Resultados claros, equipo digital en acción</h1>
           <p className="text-muted-foreground">
-            Tu equipo digital activo, conectado al CRM y enfocado en vender.
+            Coordina a tus empleados digitales para responder más rápido y cerrar más ventas.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button variant="outline" className="gap-2">
-            <Activity className="h-4 w-4" /> Ver actividad
-          </Button>
-          <Button className="gap-2">
-            <Sparkles className="h-4 w-4" /> Activar empleado
-          </Button>
+        <div className="flex flex-wrap gap-6">
+          <div className="space-y-1">
+            <Button variant="outline" className="gap-2">
+              <Activity className="h-4 w-4" /> Bitácora
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Revisa eventos clave y alertas recientes.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <Button className="gap-2">
+              <Sparkles className="h-4 w-4" /> Activar nuevo empleado
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Agrega un rol y conéctalo al CRM en minutos.
+            </p>
+          </div>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KPIStat
-          title="Activos"
+          title="Estado del centro"
           value={`${centerMetrics.activos} activos / ${centerMetrics.enAlerta} en alerta`}
+          helper="Corte actual · activos vs. en seguimiento."
           tone="success"
         />
         <KPIStat
-          title="Tiempo promedio respuesta"
+          title="Tiempo de respuesta"
           value={centerMetrics.tiempoRespuestaPromedio}
-          helper="Últimos 7 días"
+          helper="Promedio últimos 7 días."
         />
         <KPIStat
-          title="Leads (7d)"
+          title="Leads atendidos (7 días)"
           value={centerMetrics.leads7d.toString()}
-          helper="Calificados y en nutrido"
+          helper="Total gestionados y nutridos."
         />
         <KPIStat
-          title="Ingresos atribuidos (7d)"
+          title="Ventas atribuidas (7 días)"
           value={centerMetrics.ingresos7d}
-          helper={`${centerMetrics.pagosPendientes} pagos pendientes`}
+          helper={`${centerMetrics.pagosPendientes} pagos pendientes · requiere seguimiento.`}
         />
       </div>
 
@@ -143,59 +184,72 @@ function EmpleadosDigitalesHome({
               employee.id === "vendedor-digital"
                 ? "empleados-digitales-vendedor-digital"
                 : `empleados-digitales-${employee.id}`;
+            const availabilityText = employee.availability
+              ? `Disponibilidad: ${employee.availability}`
+              : "Disponibilidad: por confirmar";
+            const primaryCta = primaryCtas[employee.id];
 
             return (
               <Card
                 key={employee.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => onNavigate(destination)}
+                onClick={() => onNavigate(destination)}
               >
-                <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                  <div className="flex items-center gap-2">
+                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="space-y-2">
                     <Badge className={cn("border", statusStyles[employee.status])}>
-                      {employee.availability}
+                      {statusLabels[employee.status]}
                     </Badge>
-                    <span className="text-sm text-muted-foreground">{employee.name}</span>
-                  </div>
-                  <CardTitle className="text-xl mt-1">{employee.headline}</CardTitle>
-                  <p className="text-muted-foreground text-sm">
-                    {employee.description}
-                  </p>
-                </div>
-                <Button variant="ghost" className="gap-2" size="sm">
-                  Ver detalle <ArrowUpRight className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {employee.kpis.map((kpi) => (
-                    <div key={kpi.label} className="rounded-xl border border-border p-3 bg-muted/40">
-                      <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                      <p className="text-xl font-semibold">{kpi.value}</p>
-                      {kpi.helper && (
-                        <p className="text-xs text-muted-foreground">{kpi.helper}</p>
-                      )}
+                    <CardTitle className="text-xl">{employee.headline}</CardTitle>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>{employee.name}</p>
+                      <p>{availabilityText}</p>
                     </div>
-                  ))}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {employee.actions.map((action) => (
-                    <Button
-                      key={action}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onNavigate(destination);
-                      }}
-                    >
-                      <ExternalLink className="h-4 w-4" /> {action}
-                    </Button>
-                  ))}
-                </div>
-              </CardContent>
+                    <p className="text-muted-foreground text-sm">
+                      {employee.description}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onNavigate(destination);
+                    }}
+                  >
+                    {primaryCta} <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {employee.kpis.map((kpi) => (
+                      <div key={kpi.label} className="rounded-xl border border-border p-3 bg-muted/40">
+                        <p className="text-sm text-muted-foreground">{kpi.label}</p>
+                        <p className="text-xl font-semibold">{kpi.value}</p>
+                        {kpi.helper && (
+                          <p className="text-xs text-muted-foreground">{kpi.helper}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {employee.actions.map((action, index) => (
+                      <Button
+                        key={`${employee.id}-${action}-${index}`}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate(destination);
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4" />{" "}
+                        {secondaryActions[employee.id]?.[index] ?? action}
+                      </Button>
+                    ))}
+                  </div>
+                </CardContent>
             </Card>
             );
           })}
@@ -203,7 +257,7 @@ function EmpleadosDigitalesHome({
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Insights & Recomendaciones
+            Recomendaciones de esta semana
           </h3>
           {insights.map((insight) => (
             <Card key={insight.title} className="border-l-4 border-l-primary/80">
@@ -211,16 +265,19 @@ function EmpleadosDigitalesHome({
                 <div className="flex items-center justify-between gap-2">
                   <CardTitle className="text-base">{insight.title}</CardTitle>
                   <Badge variant="secondary" className="text-xs">
-                    {insight.priority}
+                    Urgencia: {insight.priority}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {insight.description}
+                  {insightDescriptions[insight.title] ?? insight.description}
                 </p>
               </CardHeader>
               <CardContent>
                 <Button variant="ghost" size="sm" className="gap-2">
-                  <Settings2 className="h-4 w-4" /> {insight.action}
+                  <Settings2 className="h-4 w-4" />{" "}
+                  {insight.priority === "Alta"
+                    ? "Aplicar recomendación"
+                    : "Ver ajustes"}
                 </Button>
               </CardContent>
             </Card>
@@ -263,7 +320,9 @@ function EmpleadoDetalle({
             <Badge className={cn("border", statusStyles[empleado.status])}>
               {empleado.availability}
             </Badge>
-            <span className="text-sm text-muted-foreground">Controles operativos • Tiempo real</span>
+            <span className="text-sm text-muted-foreground">
+              Última sincronización: hace 5 min • Fuente: CRM
+            </span>
           </div>
           <h1 className="text-3xl font-bold mt-2">{empleado.name}</h1>
           <p className="text-muted-foreground">{empleado.headline}</p>
@@ -273,7 +332,7 @@ function EmpleadoDetalle({
             <Activity className="h-4 w-4" /> Actividad reciente
           </Button>
           <Button size="sm" className="gap-2">
-            <Sparkles className="h-4 w-4" /> Ajustes rápidos
+            <Sparkles className="h-4 w-4" /> Optimizar ahora
           </Button>
         </div>
       </div>
@@ -303,8 +362,8 @@ function EmpleadoDetalle({
                 {empleado.id === "marketing"
                   ? "Campañas"
                   : empleado.id === "ventas"
-                  ? "Scripts"
-                  : "Métodos de pago"}
+                  ? "Guiones"
+                  : "Cobros"}
               </TabsTrigger>
             </TabsList>
             <TabsContent value="resumen">
