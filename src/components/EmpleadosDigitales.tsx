@@ -12,6 +12,7 @@ import {
 } from "./ui/dialog";
 import { Switch } from "./ui/switch";
 import { cn } from "./ui/utils";
+import { VendedorDigitalPanel } from "./VendedorDigitalPanel";
 
 type EmployeeFromWebhook = {
   id: string;
@@ -80,7 +81,21 @@ interface EmpleadosDigitalesProps {
   onNavigate?: (view: string) => void;
 }
 
-export function EmpleadosDigitales({ onNavigate }: EmpleadosDigitalesProps) {
+export function EmpleadosDigitales({
+  onNavigate,
+  view,
+}: EmpleadosDigitalesProps) {
+  if (view === "empleados-digitales-vendedor-digital-panel") {
+    return (
+      <VendedorDigitalPanel
+        onBack={() => onNavigate?.("empleados-digitales")}
+        onTrain={() =>
+          onNavigate?.("empleados-digitales-vendedor-digital-entrenamiento")
+        }
+      />
+    );
+  }
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<Payload | null>(null);
@@ -147,6 +162,12 @@ export function EmpleadosDigitales({ onNavigate }: EmpleadosDigitalesProps) {
     setDialogOpen(open);
     if (!open) {
       setPendingToggle(null);
+    }
+  };
+
+  const handlePrimaryAction = (employee: EmployeeFromWebhook) => {
+    if (employee.id === "vendedor-digital") {
+      onNavigate?.("empleados-digitales-vendedor-digital-panel");
     }
   };
 
@@ -413,7 +434,10 @@ export function EmpleadosDigitales({ onNavigate }: EmpleadosDigitalesProps) {
 
                       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-muted/80 pt-4">
                         <div className="flex flex-wrap gap-2">
-                          <Button size="sm" onClick={() => undefined}>
+                          <Button
+                            size="sm"
+                            onClick={() => handlePrimaryAction(employee)}
+                          >
                             {primaryCtaLabel}
                           </Button>
                           <Button size="sm" variant="outline" onClick={() => undefined}>
