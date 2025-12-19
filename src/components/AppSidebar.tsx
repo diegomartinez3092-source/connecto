@@ -145,7 +145,7 @@ export function AppSidebar({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{userName}</p>
-                <p className="text-xs text-muted-foreground truncate">{userRole}</p>
+                <p className="text-sm text-gray-500 truncate">{userRole}</p>
               </div>
             </div>
             <Button
