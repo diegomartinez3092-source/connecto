@@ -2,7 +2,16 @@ export type DigitalEmployeeId =
   | "marketing"
   | "ventas"
   | "cajero"
-  | "vendedor-digital";
+  | "vendedor-digital"
+  | "soporte"
+  | "operaciones";
+
+export type DigitalEmployeeStatus =
+  | "Operando"
+  | "Requiere atención"
+  | "Inactivo"
+  | "En configuración"
+  | "Detenido por decisión humana";
 
 export interface ActivityItem {
   title: string;
@@ -13,10 +22,13 @@ export interface ActivityItem {
 export interface DigitalEmployee {
   id: DigitalEmployeeId;
   name: string;
-  status: "active" | "alert";
+  status: DigitalEmployeeStatus;
   availability?: string;
+  responsibility: string;
   description: string;
   headline: string;
+  attributedRevenue7d?: number;
+  capacityRecovered7d?: number;
   kpis: {
     label: string;
     value: string;
@@ -77,11 +89,14 @@ export const digitalEmployees: DigitalEmployee[] = [
   {
     id: "vendedor-digital",
     name: "Vendedor digital",
-    status: "active",
-    availability: "Activo",
+    status: "Operando",
+    availability: "24/7",
+    responsibility: "Atiende, califica y agenda para impulsar cierres.",
     description:
-      "Cierra ventas 24/7: atiende, cotiza, da seguimiento y empuja a pago.",
+      "Reduce la carga operativa y mantiene atención constante sin depender del equipo humano.",
     headline: "Atiende, cotiza y empuja a pago sin fricción",
+    attributedRevenue7d: 18200,
+    capacityRecovered7d: 0.12,
     kpis: [
       { label: "Conversaciones hoy", value: "—" },
       { label: "Leads hoy", value: "—" },
@@ -100,11 +115,15 @@ export const digitalEmployees: DigitalEmployee[] = [
   },
   {
     id: "marketing",
-    name: "Especialista de Marketing",
-    status: "active",
-    availability: "Activo",
-    description: "Genera y califica leads desde campañas digitales integradas al CRM.",
+    name: "Marketing digital",
+    status: "En configuración",
+    availability: "Horario",
+    responsibility: "Activa campañas y nutre prospectos.",
+    description:
+      "Termina la configuración para estabilizar adquisición y evitar semanas flojas.",
     headline: "Activa campañas omnicanal y nutre leads calificados.",
+    attributedRevenue7d: 4900,
+    capacityRecovered7d: 0.07,
     kpis: [
       { label: "Leads 7d", value: "126" },
       { label: "Leads calificados", value: "72%" },
@@ -134,10 +153,15 @@ export const digitalEmployees: DigitalEmployee[] = [
   {
     id: "ventas",
     name: "Asistente de Ventas",
-    status: "active",
-    availability: "Activo 24/7",
-    description: "Responde, califica y agenda siguiendo guías de conversación.",
-    headline: "Conecta prospectos con propuestas claras y escalamiento automático.",
+    status: "Inactivo",
+    availability: "Horario",
+    responsibility: "Responde, califica y agenda siguiendo guías de conversación.",
+    description:
+      "Actívalo cuando quieras cobertura comercial dedicada sin saturar al equipo humano.",
+    headline:
+      "Conecta prospectos con propuestas claras y escalamiento automático.",
+    attributedRevenue7d: undefined,
+    capacityRecovered7d: undefined,
     kpis: [
       { label: "Conversaciones 7d", value: "418" },
       { label: "Conversión a pago", value: "19%" },
@@ -156,7 +180,8 @@ export const digitalEmployees: DigitalEmployee[] = [
       { title: "Escalamiento por palabra clave" },
     ],
     configuration: {
-      "Mensaje de bienvenida": "Hola, soy tu asistente digital. ¿Qué necesitas cotizar hoy?",
+      "Mensaje de bienvenida":
+        "Hola, soy tu asistente digital. ¿Qué necesitas cotizar hoy?",
       "Máx. mensajes antes de pago": "3",
       "CTA por mensaje": "Activo",
       "Máx. opciones": "2",
@@ -168,11 +193,15 @@ export const digitalEmployees: DigitalEmployee[] = [
   },
   {
     id: "cajero",
-    name: "Cajero",
-    status: "alert",
-    availability: "En alerta",
-    description: "Gestiona cobros, links de pago y recordatorios automáticos.",
+    name: "Cajero digital",
+    status: "Requiere atención",
+    availability: "24/7",
+    responsibility: "Gestiona cobros, links y recordatorios.",
+    description:
+      "Hay pagos pendientes. Resolver esto puede recuperar ventas sin esfuerzo extra.",
     headline: "Recupera pagos pendientes y prioriza métodos seguros.",
+    attributedRevenue7d: 1700,
+    capacityRecovered7d: 0.11,
     kpis: [
       { label: "Pagos completados", value: "42" },
       { label: "Pendientes", value: "6" },
@@ -191,10 +220,10 @@ export const digitalEmployees: DigitalEmployee[] = [
       { title: "Pago iniciado sin confirmación", meta: "Webhook" },
     ],
     configuration: {
-      "Stripe": "Activo",
-      "Transferencia": "Activo",
-      "Depósito": "Activo",
-      "Efectivo": "Activo",
+      Stripe: "Activo",
+      Transferencia: "Activo",
+      Depósito: "Activo",
+      Efectivo: "Activo",
       "Stripe primero": "Sí",
       "Máx. métodos por mensaje": "2",
       "Cadencia follow-up": "T+2h, T+24h, T+72h",
@@ -206,5 +235,59 @@ export const digitalEmployees: DigitalEmployee[] = [
       efectivo: true,
       stripePrimero: true,
     },
+  },
+  {
+    id: "soporte",
+    name: "Soporte digital",
+    status: "Detenido por decisión humana",
+    availability: "—",
+    responsibility: "Resuelve preguntas frecuentes y reduce la carga al equipo.",
+    description:
+      "Reanuda si el volumen de preguntas vuelve a subir o si tu equipo se satura.",
+    headline: "Mantiene atención postventa y filtra solicitudes repetitivas.",
+    attributedRevenue7d: 0,
+    capacityRecovered7d: 0,
+    kpis: [
+      { label: "Casos resueltos", value: "—" },
+      { label: "Satisfacción", value: "—" },
+      { label: "Escalados", value: "—" },
+    ],
+    detailMetrics: [
+      { label: "Casos resueltos", value: "—" },
+      { label: "Satisfacción", value: "—" },
+      { label: "Escalados", value: "—" },
+      { label: "Tiempo promedio", value: "—" },
+    ],
+    actions: ["Ver historial", "Reactivar"],
+    recentActivity: [
+      { title: "Sin actividad", meta: "Detenido por decisión humana" },
+    ],
+  },
+  {
+    id: "operaciones",
+    name: "Operaciones digital",
+    status: "Operando",
+    availability: "Horario",
+    responsibility: "Monitorea procesos y detecta cuellos de botella.",
+    description:
+      "Asegura continuidad operativa y anticipa riesgos antes de que impacten al equipo.",
+    headline: "Supervisa procesos críticos y documenta mejoras continuas.",
+    attributedRevenue7d: 0,
+    capacityRecovered7d: 0.05,
+    kpis: [
+      { label: "Alertas mitigadas", value: "—" },
+      { label: "SLA interno", value: "—" },
+      { label: "Incidentes", value: "—" },
+    ],
+    detailMetrics: [
+      { label: "Alertas mitigadas", value: "—" },
+      { label: "SLA interno", value: "—" },
+      { label: "Incidentes", value: "—" },
+      { label: "Tiempo de respuesta", value: "—" },
+    ],
+    actions: ["Ver tablero", "Configurar"],
+    recentActivity: [
+      { title: "Checklist semanal completado", meta: "Hace 2h" },
+    ],
   },
 ];
