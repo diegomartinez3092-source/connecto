@@ -17,7 +17,6 @@ import { Switch } from "./ui/switch";
 import {
   centerMetrics,
   digitalEmployees,
-  insights,
   type DigitalEmployee,
   type DigitalEmployeeId,
 } from "../data/digitalEmployees";
@@ -28,8 +27,6 @@ import {
   ArrowUpRight,
   Bot,
   CheckCircle2,
-  Clock3,
-  ExternalLink,
   MailQuestion,
   Settings2,
   Sparkles,
@@ -49,31 +46,6 @@ const statusStyles: Record<DigitalEmployee["status"], string> = {
 const statusLabels: Record<DigitalEmployee["status"], string> = {
   active: "Operando",
   alert: "Requiere atención",
-};
-
-const primaryCtas: Record<DigitalEmployeeId, string> = {
-  "vendedor-digital": "Abrir panel",
-  marketing: "Revisar campañas",
-  ventas: "Optimizar guiones",
-  cajero: "Ajustar cobros",
-};
-
-const secondaryActions: Record<DigitalEmployeeId, string[]> = {
-  "vendedor-digital": ["Probar respuesta", "Editar configuración"],
-  marketing: ["Ver leads", "Editar reglas", "Pausar campañas"],
-  ventas: ["Ver conversaciones", "Ajustar mensajes", "Revisar escalamiento"],
-  cajero: ["Revisar pendientes", "Editar métodos", "Actualizar plantillas"],
-};
-
-const insightDescriptions: Record<string, string> = {
-  "Optimiza el flujo de leads":
-    "Los leads con alto score se quedan en espera; enviarlos directo a Ventas acelera la conversión y mejora el tiempo de respuesta.",
-  "Presupuesto de campañas":
-    "El rendimiento del hook está bajando; ajustarlo puede elevar conversiones sin aumentar el CPL.",
-  "Pagos pendientes":
-    "Hay cobros sin comprobante; activar seguimiento en 24h ayuda a recuperar ventas y reducir rezagos.",
-  "Scripts de venta":
-    "Mensajes con demasiadas opciones frenan respuestas; un CTA claro acelera cierres.",
 };
 
 export function EmpleadosDigitales({ view, onNavigate }: EmpleadosDigitalesProps) {
@@ -121,168 +93,224 @@ function EmpleadosDigitalesHome({
 }: {
   onNavigate: (view: string) => void;
 }) {
+  const vendedorDigital = digitalEmployees.find(
+    (employee) => employee.id === "vendedor-digital"
+  );
+  const lastUpdatedAt = (centerMetrics as { lastUpdated?: string }).lastUpdated;
+  const cutoffLabel = lastUpdatedAt
+    ? `Corte: actualizado hace ${lastUpdatedAt}`
+    : "Corte: sin actualizar";
+  const fallbackValue = "Sin datos (actualiza resultados)";
+  const leadKpis = [
+    {
+      title: "Leads nuevos (hoy)",
+      valueMain: fallbackValue,
+      helper: "Actualiza resultados para ver el corte.",
+    },
+    {
+      title: "Leads atendidos (7 días)",
+      valueMain: centerMetrics.leads7d.toString(),
+      helper: "Gestionados en los últimos 7 días.",
+    },
+    {
+      title: "Respuesta < 2 min",
+      valueMain: fallbackValue,
+      helper: "Velocidad de respuesta del vendedor.",
+    },
+    {
+      title: "Citas agendadas (7 días)",
+      valueMain: fallbackValue,
+      helper: "Si no hay citas, muestra leads calificados.",
+    },
+  ];
+  const weeklyRecommendations = [
+    {
+      title: "Ajusta el mensaje inicial",
+      description:
+        "Simplifica el primer contacto para acelerar la conversación y calificar más rápido.",
+    },
+    {
+      title: "Activa un CTA único",
+      description:
+        "Un solo llamado a la acción mejora la tasa de respuesta y evita distracciones.",
+    },
+    {
+      title: "Optimiza horarios de respuesta",
+      description:
+        "Mantén la cobertura en horas pico para capturar leads calientes.",
+    },
+  ];
+
+  if (!vendedorDigital) {
+    return null;
+  }
+
+  const availabilityLabel = "24/7";
+  const vendorDestination = "empleados-digitales-vendedor-digital";
+  const vendorConfigDestination =
+    "empleados-digitales-vendedor-digital-configuracion";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-primary text-sm font-semibold">
-            <Bot className="h-4 w-4" /> Centro de Empleados Digitales
+            <Bot className="h-4 w-4" /> Vendedor digital
           </div>
-          <h1 className="text-3xl font-bold mt-3">Resultados claros, equipo digital en acción</h1>
+          <h1 className="text-3xl font-bold mt-3">
+            Generación de leads, en automático
+          </h1>
           <p className="text-muted-foreground">
-            Coordina a tus empleados digitales para responder más rápido y cerrar más ventas.
+            Responde al instante, califica y agenda para que tu equipo cierre.
           </p>
         </div>
         <div className="flex flex-wrap gap-6">
           <div className="space-y-1">
-            <Button variant="outline" className="gap-2">
-              <Activity className="h-4 w-4" /> Bitácora
+            <Button className="gap-2">
+              <Activity className="h-4 w-4" /> Actualizar resultados
             </Button>
             <p className="text-xs text-muted-foreground">
-              Revisa eventos clave y alertas recientes.
+              Trae datos del CRM (manual).
             </p>
           </div>
           <div className="space-y-1">
-            <Button className="gap-2">
-              <Sparkles className="h-4 w-4" /> Activar nuevo empleado
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => onNavigate(vendorConfigDestination)}
+            >
+              <Sparkles className="h-4 w-4" /> Configurar vendedor
             </Button>
             <p className="text-xs text-muted-foreground">
-              Agrega un rol y conéctalo al CRM en minutos.
+              Mensajes, CTAs y conexión.
             </p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KPIStat
-          title="Estado del centro"
-          value={`${centerMetrics.activos} activos / ${centerMetrics.enAlerta} en alerta`}
-          helper="Corte actual · activos vs. en seguimiento."
-          tone="success"
-        />
-        <KPIStat
-          title="Tiempo de respuesta"
-          value={centerMetrics.tiempoRespuestaPromedio}
-          helper="Promedio últimos 7 días."
-        />
-        <KPIStat
-          title="Leads atendidos (7 días)"
-          value={centerMetrics.leads7d.toString()}
-          helper="Total gestionados y nutridos."
-        />
-        <KPIStat
-          title="Ventas atribuidas (7 días)"
-          value={centerMetrics.ingresos7d}
-          helper={`${centerMetrics.pagosPendientes} pagos pendientes · requiere seguimiento.`}
-        />
+        {leadKpis.map((kpi, index) => (
+          <KPIStat
+            key={`${kpi.title}-${index}`}
+            title={kpi.title}
+            valueMain={kpi.valueMain}
+            helper={kpi.helper}
+            tone={index === 0 ? "success" : undefined}
+          />
+        ))}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-4">
-        <div className="xl:col-span-3 space-y-4">
-          {digitalEmployees.map((employee) => {
-            const destination =
-              employee.id === "vendedor-digital"
-                ? "empleados-digitales-vendedor-digital"
-                : `empleados-digitales-${employee.id}`;
-            const availabilityText = employee.availability
-              ? `Disponibilidad: ${employee.availability}`
-              : "Disponibilidad: por confirmar";
-            const primaryCta = primaryCtas[employee.id];
+      <div className="flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <span>{cutoffLabel}</span>
+        <span className="font-medium text-foreground">Actualización manual</span>
+      </div>
 
-            return (
-              <Card
-                key={employee.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => onNavigate(destination)}
+      <Card className="border border-primary/20">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <Badge className={cn("border", statusStyles[vendedorDigital.status])}>
+              {statusLabels[vendedorDigital.status]}
+            </Badge>
+            <CardTitle className="text-xl">{vendedorDigital.headline}</CardTitle>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p>{vendedorDigital.name}</p>
+              <p>Disponibilidad: {availabilityLabel}</p>
+            </div>
+            <p className="text-muted-foreground text-sm line-clamp-1">
+              {vendedorDigital.description}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              className="gap-2"
+              onClick={() => onNavigate(vendorDestination)}
+            >
+              Abrir panel <ArrowUpRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => onNavigate(vendorConfigDestination)}
+            >
+              Editar configuración
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            {leadKpis.slice(0, 3).map((kpi) => (
+              <div
+                key={kpi.title}
+                className="rounded-xl border border-border p-3 bg-muted/40"
               >
-                <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-2">
-                    <Badge className={cn("border", statusStyles[employee.status])}>
-                      {statusLabels[employee.status]}
-                    </Badge>
-                    <CardTitle className="text-xl">{employee.headline}</CardTitle>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <p>{employee.name}</p>
-                      <p>{availabilityText}</p>
-                    </div>
-                    <p className="text-muted-foreground text-sm">
-                      {employee.description}
-                    </p>
-                  </div>
-                  <Button
-                    size="sm"
-                    className="gap-2"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onNavigate(destination);
-                    }}
-                  >
-                    {primaryCta} <ArrowUpRight className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {employee.kpis.map((kpi) => (
-                      <div key={kpi.label} className="rounded-xl border border-border p-3 bg-muted/40">
-                        <p className="text-sm text-muted-foreground">{kpi.label}</p>
-                        <p className="text-xl font-semibold">{kpi.value}</p>
-                        {kpi.helper && (
-                          <p className="text-xs text-muted-foreground">{kpi.helper}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {employee.actions.map((action, index) => (
-                      <Button
-                        key={`${employee.id}-${action}-${index}`}
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onNavigate(destination);
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4" />{" "}
-                        {secondaryActions[employee.id]?.[index] ?? action}
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-            </Card>
-            );
-          })}
-        </div>
+                <p className="text-sm text-muted-foreground">{kpi.title}</p>
+                <p className="text-lg font-semibold">{kpi.valueMain}</p>
+                {kpi.helper && (
+                  <p className="text-xs text-muted-foreground">{kpi.helper}</p>
+                )}
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Impacto esperado: más leads calificados con respuesta inmediata.
+          </p>
+        </CardContent>
+      </Card>
 
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Recomendaciones de esta semana
-          </h3>
-          {insights.map((insight) => (
-            <Card key={insight.title} className="border-l-4 border-l-primary/80">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="text-base">{insight.title}</CardTitle>
-                  <Badge variant="secondary" className="text-xs">
-                    Urgencia: {insight.priority}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {insightDescriptions[insight.title] ?? insight.description}
-                </p>
-              </CardHeader>
-              <CardContent>
-                <Button variant="ghost" size="sm" className="gap-2">
-                  <Settings2 className="h-4 w-4" />{" "}
-                  {insight.priority === "Alta"
-                    ? "Aplicar recomendación"
-                    : "Ver ajustes"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Hoy</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span className="font-medium text-foreground">Meta</span>
+            <span>Generar leads</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span className="font-medium text-foreground">Acción recomendada</span>
+            <span>Optimizar primer mensaje</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+            <span className="font-medium text-foreground">Recordatorio</span>
+            <span>Actualiza resultados para ver el corte real.</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          Recomendaciones de esta semana
+        </h3>
+        {weeklyRecommendations.slice(0, 3).map((insight) => (
+          <Card key={insight.title} className="border-l-4 border-l-primary/80">
+            <CardHeader>
+              <div className="flex items-center justify-between gap-2">
+                <CardTitle className="text-base">{insight.title}</CardTitle>
+                <Badge variant="secondary" className="text-xs">
+                  Prioridad: Leads
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {insight.description}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Resultado esperado: Más leads
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2"
+                onClick={() => onNavigate(vendorConfigDestination)}
+              >
+                <Settings2 className="h-4 w-4" /> Aplicar ajuste
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );
@@ -432,20 +460,25 @@ function EmpleadoDetalle({
 
 function KPIStat({
   title,
-  value,
+  valueMain,
+  valueSub,
   helper,
   tone,
 }: {
   title: string;
-  value: string;
+  valueMain: string;
+  valueSub?: string;
   helper?: string;
   tone?: "success" | "warning";
 }) {
   return (
-    <Card className={cn(tone === "success" ? "border-emerald-200" : "")}> 
+    <Card className={cn(tone === "success" ? "border-emerald-200" : "")}>
       <CardHeader className="pb-2">
         <p className="text-sm text-muted-foreground">{title}</p>
-        <CardTitle className="text-2xl">{value}</CardTitle>
+        <CardTitle className="text-2xl">{valueMain}</CardTitle>
+        {valueSub && (
+          <p className="text-sm text-muted-foreground">{valueSub}</p>
+        )}
         {helper && <p className="text-xs text-muted-foreground">{helper}</p>}
       </CardHeader>
     </Card>
