@@ -40,6 +40,123 @@ interface DashboardProps {
   onNavigate: (view: string) => void;
 }
 
+function EmpleadosDigitalesSection({ onNavigate }: DashboardProps) {
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 text-primary text-sm font-semibold">
+            <Bot className="h-4 w-4" />
+            Empleados Digitales
+          </div>
+          <h2 className="text-2xl font-semibold">Activa y monitorea tus agentes</h2>
+          <p className="text-muted-foreground max-w-2xl">
+            Los agentes digitales están listos para ayudarte a vender y dar seguimiento. Consulta su estado y entra
+            directo a cada dashboard.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button variant="outline" onClick={() => onNavigate("empleados-digitales")}>
+            Centro completo
+          </Button>
+          <Button className="gap-2" onClick={() => onNavigate("empleados-digitales-vendedor-digital")}>
+            Vendedor digital <ArrowUpRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <Card className="border-[#E0E0E0]">
+          <CardHeader>
+            <CardTitle>Disponibilidad</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-[#242424]">{centerMetrics.activos} activos</p>
+            <p className="text-sm text-muted-foreground">{centerMetrics.enAlerta} en alerta</p>
+          </CardContent>
+        </Card>
+        <Card className="border-[#E0E0E0]">
+          <CardHeader>
+            <CardTitle>Tiempo de respuesta</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-[#242424]">{centerMetrics.tiempoRespuestaPromedio}</p>
+            <p className="text-sm text-muted-foreground">Últimos 7 días</p>
+          </CardContent>
+        </Card>
+        <Card className="border-[#E0E0E0]">
+          <CardHeader>
+            <CardTitle>Leads (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-[#242424]">{centerMetrics.leads7d}</p>
+            <p className="text-sm text-muted-foreground">Calificados y en nutrido</p>
+          </CardContent>
+        </Card>
+        <Card className="border-[#E0E0E0]">
+          <CardHeader>
+            <CardTitle>Ingresos atribuidos (7d)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-3xl font-semibold text-[#242424]">{centerMetrics.ingresos7d}</p>
+            <p className="text-sm text-muted-foreground">{centerMetrics.pagosPendientes} pagos pendientes</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {digitalEmployees.map((employee) => {
+          const destination =
+            employee.id === "vendedor-digital"
+              ? "empleados-digitales-vendedor-digital"
+              : `empleados-digitales-${employee.id}`;
+          return (
+            <Card key={employee.id} className="border-[#E0E0E0] hover:shadow-md transition-shadow">
+              <CardHeader className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">{employee.name}</p>
+                    <CardTitle className="text-xl leading-tight">{employee.headline}</CardTitle>
+                  </div>
+                  <span
+                    className={
+                      employee.status === "alert"
+                        ? "rounded-full bg-amber-100 text-amber-900 px-3 py-1 text-xs border border-amber-200"
+                        : "rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs border-emerald-200"
+                    }
+                  >
+                    {employee.availability || (employee.status === "alert" ? "En alerta" : "Activo")}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">{employee.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {employee.kpis.map((kpi) => (
+                    <div key={`${employee.id}-${kpi.label}`} className="rounded-lg border border-border p-3 bg-muted/40">
+                      <p className="text-xs text-muted-foreground">{kpi.label}</p>
+                      <p className="text-lg font-semibold">{kpi.value}</p>
+                      {kpi.helper && <p className="text-xs text-muted-foreground">{kpi.helper}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" className="gap-2" onClick={() => onNavigate(destination)}>
+                    Ver dashboard <ArrowUpRight className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => onNavigate("empleados-digitales")}>
+                    Centro
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export function Dashboard({ onNavigate }: DashboardProps) {
   
   // ============= DATA FOR VENDEDOR =============
@@ -347,6 +464,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="space-y-6">
+      <EmpleadosDigitalesSection onNavigate={onNavigate} />
+
       {/* Header */}
       <div>
         <h1 className="mb-2">Dashboard Ejecutivo</h1>
