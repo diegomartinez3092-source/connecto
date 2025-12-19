@@ -64,6 +64,7 @@ export default function App() {
     setSelectedEmpresa(empresaNombre);
     setUserEmail(email);
     localStorage.setItem("userEmail", email);
+    localStorage.setItem("email", email);
     localStorage.setItem("selectedEmpresa", empresaNombre);
     setIsAuthenticated(true);
     setShowRegister(false);
@@ -73,6 +74,7 @@ export default function App() {
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("userEmail");
+    localStorage.removeItem("email");
     localStorage.removeItem("selectedEmpresa");
     setUserEmail(null);
     setUserName("Usuario");
@@ -101,6 +103,7 @@ export default function App() {
       setUserEmail(storedEmail);
       setSelectedEmpresa(storedEmpresa || "Acerored");
       setIsAuthenticated(true);
+      localStorage.setItem("email", storedEmail);
       await fetchUserProfile(storedEmail);
     };
 
