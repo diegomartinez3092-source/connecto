@@ -240,6 +240,10 @@ export function VendedorDigitalPanel({
   const abortRef = useRef<AbortController | null>(null);
   const isFirstFilterRender = useRef(true);
 
+  const handleTrainClick = useCallback(() => {
+    onTrain?.();
+  }, [onTrain]);
+
   const filters = useMemo<Filters>(
     () => ({
       quickRange,
@@ -445,7 +449,7 @@ export function VendedorDigitalPanel({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             className="gap-2"
-            onClick={onTrain}
+            onClick={handleTrainClick}
             disabled={!!emailError}
           >
             <Brain className="h-4 w-4" />
@@ -930,7 +934,10 @@ export function VendedorDigitalPanel({
                     </Card>
                   )}
             </div>
-            <Button className="w-full gap-2" onClick={onTrain}>
+            <Button
+              className="w-full gap-2"
+              onClick={handleTrainClick}
+            >
               <Brain className="h-4 w-4" />
               Entrenar al agente
             </Button>
