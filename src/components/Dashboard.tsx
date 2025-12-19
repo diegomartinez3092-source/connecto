@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
@@ -20,8 +19,6 @@ import {
   MapPin,
   Download,
   Filter,
-  Bot,
-  ArrowUpRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -38,7 +35,6 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { centerMetrics, digitalEmployees } from "../data/digitalEmployees";
 
 interface DashboardProps {
   onNavigate: (view: string) => void;
