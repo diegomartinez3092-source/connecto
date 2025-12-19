@@ -13,6 +13,7 @@ import {
 import { Switch } from "./ui/switch";
 import { cn } from "./ui/utils";
 import { VendedorDigitalPanel } from "./VendedorDigitalPanel";
+import { VendedorDigitalTrainingPage } from "./VendedorDigitalTrainingPage";
 
 type EmployeeFromWebhook = {
   id: string;
@@ -91,6 +92,16 @@ export function EmpleadosDigitales({
         onBack={() => onNavigate?.("empleados-digitales")}
         onTrain={() =>
           onNavigate?.("empleados-digitales-vendedor-digital-entrenamiento")
+        }
+      />
+    );
+  }
+
+  if (view === "empleados-digitales-vendedor-digital-entrenamiento") {
+    return (
+      <VendedorDigitalTrainingPage
+        onBack={() =>
+          onNavigate?.("empleados-digitales-vendedor-digital-panel")
         }
       />
     );
