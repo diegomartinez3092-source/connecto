@@ -33,13 +33,13 @@ interface AppSidebarProps {
 }
 
 const navigationItems: NavItem[] = [
+  { title: "Empleados Digitales", icon: Bot, href: "empleados-digitales" },
   { title: "Dashboard", icon: LayoutDashboard, href: "dashboard" },
   { title: "Prospectos", icon: Users, href: "prospectos" },
   { title: "Cotizaciones", icon: FileText, href: "cotizaciones" },
   { title: "Clientes", icon: UserCircle, href: "clientes" },
   { title: "Pipeline", icon: GitBranch, href: "pipeline" },
   { title: "Productos y Servicios", icon: Package, href: "productos-servicios" },
-  { title: "Empleados Digitales", icon: Bot, href: "empleados-digitales" },
 ];
 
 export function AppSidebar({
@@ -145,7 +145,7 @@ export function AppSidebar({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold truncate">{userName}</p>
-                <p className="text-xs text-muted-foreground truncate">{userRole}</p>
+                <p className="text-sm text-gray-500 truncate">{userRole}</p>
               </div>
             </div>
             <Button

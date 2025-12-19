@@ -46,7 +46,6 @@ export function Login({ onLogin, onShowRegister, onShowForgotPassword }: LoginPr
     const normalizedEmail = email.trim();
 
     if (!normalizedEmail || !password) {
-    if (!email || !password) {
       setErrorMessage("Ingresa tu correo y contraseña.");
       return;
     }
