@@ -1,4 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  DigitalEmployee,
+  DigitalEmployeeStatus,
+  digitalEmployees,
+} from "../data/digitalEmployees";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -13,36 +18,21 @@ import {
 import { Switch } from "./ui/switch";
 import { cn } from "./ui/utils";
 
-const WEBHOOK_URL =
-  "https://hook.us2.make.com/u42uf80dkpzjeyjx5vouvvbllv8o5ke3";
+const activeStatuses: DigitalEmployeeStatus[] = [
+  "Operando",
+  "Requiere atención",
+  "En configuración",
+];
 
-type EmployeeFromWebhook = {
-  id: string;
-  isActive: boolean;
-  status: string;
-  availability: string;
-  name: string;
-  subtitle: string;
-  description: string;
-  ingresosAtribuidos7d: string;
-  capacidadRecuperada7d: string;
-  agentMessage: string;
+const statusLabels: Record<DigitalEmployeeStatus, string> = {
+  Operando: "Operando",
+  "Requiere atención": "Requiere atención",
+  Inactivo: "Inactivo",
+  "En configuración": "En configuración",
+  "Detenido por decisión humana": "Detenido por decisión humana",
 };
 
-type Payload = {
-  summary: {
-    activosRatio: string;
-    enAtencion: string;
-    ingresosAtribuidos7d: string;
-    capacidadRecuperada7d: string;
-    corte?: string;
-  };
-  team: {
-    employees: EmployeeFromWebhook[];
-  };
-};
-
-const statusClasses: Record<string, string> = {
+const statusClasses: Record<DigitalEmployeeStatus, string> = {
   Operando: "border-emerald-200 bg-emerald-50 text-emerald-700",
   "Requiere atención": "border-amber-200 bg-amber-50 text-amber-700",
   Inactivo: "border-slate-200 bg-slate-50 text-slate-700",
@@ -50,7 +40,7 @@ const statusClasses: Record<string, string> = {
   "Detenido por decisión humana": "border-rose-200 bg-rose-50 text-rose-700",
 };
 
-const primaryCtaLabels: Record<string, string> = {
+const primaryCtaLabels: Record<DigitalEmployeeStatus, string> = {
   Operando: "Abrir panel",
   "Requiere atención": "Resolver ahora",
   Inactivo: "Activar",
@@ -58,94 +48,147 @@ const primaryCtaLabels: Record<string, string> = {
   "Detenido por decisión humana": "Reanudar",
 };
 
-const getStatusClass = (status?: string) =>
-  status ? statusClasses[status] : undefined;
+const getStatusLabel = (status: DigitalEmployeeStatus) => statusLabels[status];
 
-const getPrimaryCtaLabel = (status?: string) =>
-  (status && primaryCtaLabels[status]) || "Ver";
+const getStatusClass = (status: DigitalEmployeeStatus) => statusClasses[status];
 
-const getAvailabilityLabel = (availability?: string) => availability || "—";
+const getPrimaryCtaLabel = (status: DigitalEmployeeStatus) =>
+  primaryCtaLabels[status];
+
+const formatCurrency = (value?: number) => {
+  if (value === undefined) {
+    return "—";
+  }
+
+  const formatted = new Intl.NumberFormat("es-MX", {
+    maximumFractionDigits: 0,
+  }).format(value);
+
+  return `$${formatted}`;
+};
+
+const formatCapacity = (value?: number) => {
+  if (value === undefined) {
+    return "—";
+  }
+
+  const formatted = new Intl.NumberFormat("es-MX", {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+  return `${formatted} persona`;
+};
+
+const getMetricHelper = (value?: number, fallback = "Sin datos") =>
+  value === undefined ? fallback : "Estimado";
+
+const getAvailabilityLabel = (availability?: string) =>
+  availability || "—";
+
+const getPrimaryCtaAction = (
+  status: DigitalEmployeeStatus,
+  employee: DigitalEmployee,
+  onNavigate?: (view: string) => void,
+) => {
+  return () => {
+    if (!onNavigate) {
+      return;
+    }
+
+    const base = `empleados-digitales-${employee.id}`;
+
+    switch (status) {
+      case "Requiere atención":
+        onNavigate(`${base}-resolver`);
+        return;
+      case "En configuración":
+        onNavigate(`${base}-configuracion`);
+        return;
+      case "Inactivo":
+      case "Detenido por decisión humana":
+        onNavigate(`${base}-activar`);
+        return;
+      default:
+        onNavigate(base);
+    }
+  };
+};
+
+const recommendations = [
+  {
+    id: "cajero",
+    title: "Cajero digital: pagos pendientes",
+    urgency: "Urgencia: Alta",
+    description:
+      "Resolver cobros pendientes puede recuperar ingresos sin aumentar carga de trabajo.",
+    expected: "Recuperar ventas + liberar tiempo.",
+    cta: "Ir a resolver",
+    target: "empleados-digitales-cajero-resolver",
+  },
+  {
+    id: "marketing",
+    title: "Marketing digital: terminar configuración",
+    urgency: "Urgencia: Media",
+    description:
+      "Completa la configuración para estabilizar adquisición y reducir intervención manual.",
+    expected: "Flujo constante + más tiempo libre.",
+    cta: "Abrir configuración",
+    target: "empleados-digitales-marketing-configuracion",
+  },
+  {
+    id: "soporte",
+    title: "Soporte digital: reactivar en picos",
+    urgency: "Urgencia: Baja",
+    description:
+      "Define el umbral de volumen para reactivar soporte sin esperar saturación humana.",
+    expected: "Atención estable + menos tickets repetidos.",
+    cta: "Definir umbral",
+    target: "empleados-digitales-soporte-configuracion",
+  },
+];
 
 interface EmpleadosDigitalesProps {
   view?: string;
   onNavigate?: (view: string) => void;
 }
 
-export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [payload, setPayload] = useState<Payload | null>(null);
+export function EmpleadosDigitales({ onNavigate }: EmpleadosDigitalesProps) {
+  const [employees, setEmployees] = useState<DigitalEmployee[]>(digitalEmployees);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingToggle, setPendingToggle] = useState<{
-    employeeId: string;
+    employeeId: DigitalEmployee["id"];
     nextActive: boolean;
-    name: string;
   } | null>(null);
-  const [activeOverrides, setActiveOverrides] = useState<
-    Record<string, boolean>
-  >({});
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      setLoading(true);
-      setError(false);
+  const summary = useMemo(() => {
+    const total = employees.length;
+    const activeCount = employees.filter((employee) =>
+      activeStatuses.includes(employee.status),
+    ).length;
+    const attentionCount = employees.filter(
+      (employee) => employee.status === "Requiere atención",
+    ).length;
+    const revenueSum = employees.reduce(
+      (sum, employee) => sum + (employee.attributedRevenue7d ?? 0),
+      0,
+    );
+    const capacitySum = employees.reduce(
+      (sum, employee) => sum + (employee.capacityRecovered7d ?? 0),
+      0,
+    );
 
-      try {
-        const userEmail =
-          typeof window !== "undefined"
-            ? localStorage.getItem("userEmail") || ""
-            : "";
-
-        const response = await fetch(WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            event: "empleados_digitales_view_loaded",
-            email: userEmail,
-            timestamp: new Date().toISOString(),
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const data = (await response.json()) as Payload;
-        setPayload(data);
-
-        const overrides = data?.team?.employees?.reduce(
-          (acc, employee) => ({
-            ...acc,
-            [employee.id]: employee.isActive,
-          }),
-          {} as Record<string, boolean>,
-        );
-
-        setActiveOverrides(overrides || {});
-      } catch (err) {
-        console.error("Error cargando empleados digitales", err);
-        setError(true);
-        setPayload(null);
-      } finally {
-        setLoading(false);
-      }
+    return {
+      total,
+      activeCount,
+      attentionCount,
+      revenueSum,
+      capacitySum,
     };
+  }, [employees]);
 
-    fetchEmployees();
-  }, []);
-
-  const summary = useMemo(() => payload?.summary, [payload]);
-
-  const employees = payload?.team?.employees ?? [];
-  const hasEmployees = employees.length > 0;
-
-  const handleToggleRequest = (employee: EmployeeFromWebhook) => {
-    const isActive = activeOverrides[employee.id] ?? employee.isActive;
-    setPendingToggle({
-      employeeId: employee.id,
-      nextActive: !isActive,
-      name: employee.name,
-    });
+  const handleToggleRequest = (employee: DigitalEmployee, nextActive: boolean) => {
+    setPendingToggle({ employeeId: employee.id, nextActive });
     setDialogOpen(true);
   };
 
@@ -155,11 +198,24 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
       return;
     }
 
-    setActiveOverrides((prev) => ({
-      ...prev,
-      [pendingToggle.employeeId]: pendingToggle.nextActive,
-    }));
+    setEmployees((prev) =>
+      prev.map((employee) => {
+        if (employee.id !== pendingToggle.employeeId) {
+          return employee;
+        }
 
+        return {
+          ...employee,
+          status: pendingToggle.nextActive ? "Operando" : "Inactivo",
+        };
+      }),
+    );
+
+    setDialogOpen(false);
+    setPendingToggle(null);
+  };
+
+  const handleCloseDialog = () => {
     setDialogOpen(false);
     setPendingToggle(null);
   };
@@ -173,7 +229,7 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <header className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
             Centro de Empleados Digitales
@@ -183,33 +239,32 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
               Tu equipo digital
             </h1>
             <p className="max-w-2xl text-sm text-muted-foreground md:text-base">
-              Roles que trabajan por tu empresa y liberan tiempo operativo para
-              decisiones estratégicas.
+              Roles inteligentes que trabajan por tu empresa, sostienen la operación
+              diaria y liberan tiempo para decisiones estratégicas.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span
-              className={cn(
-                "h-2 w-2 rounded-full",
-                error ? "bg-rose-500" : loading ? "bg-amber-400" : "bg-emerald-500",
-              )}
-            />
-            <span>
-              {loading
-                ? "Cargando datos…"
-                : error
-                ? "No se pudo cargar"
-                : `Actualizado: ${summary?.corte ?? "corte no disponible"}`}
-            </span>
-          </div>
         </div>
-        <div className="space-y-2">
-          <Button disabled className="w-full sm:w-auto">
-            Agregar empleado
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Disponible en plan Pro (próximamente).
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
+          <div className="space-y-2">
+            <Button disabled className="w-full sm:w-auto">
+              Agregar empleado
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Disponible en plan Pro (próximamente).
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => onNavigate?.("empleados-digitales-resumen")}
+            >
+              Ver resumen semanal
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Ingresos atribuidos y capacidad recuperada.
+            </p>
+          </div>
         </div>
       </header>
 
@@ -218,19 +273,17 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
           <CardContent className="pt-6">
             <p className="text-xs text-muted-foreground">Empleados activos</p>
             <p className="mt-2 text-2xl font-semibold">
-              {summary?.activosRatio ?? "—"}
+              {summary.activeCount} / {summary.total}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Operando hoy</p>
-            <p className="mt-4 text-xs text-muted-foreground">
-              {summary?.corte ?? "Corte: —"}
-            </p>
+            <p className="mt-4 text-xs text-muted-foreground">Corte actual</p>
           </CardContent>
         </Card>
         <Card className="border-muted/80">
           <CardContent className="pt-6">
             <p className="text-xs text-muted-foreground">En atención</p>
             <p className="mt-2 text-2xl font-semibold">
-              {summary?.enAtencion ?? "—"}
+              {summary.attentionCount}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Requiere decisión
@@ -246,7 +299,7 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
               Ingresos atribuidos (7 días)
             </p>
             <p className="mt-2 text-2xl font-semibold">
-              {summary?.ingresosAtribuidos7d ?? "—"}
+              {formatCurrency(summary.revenueSum)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Ventas influenciadas
@@ -260,7 +313,7 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
               Capacidad recuperada (7 días)
             </p>
             <p className="mt-2 text-2xl font-semibold">
-              {summary?.capacidadRecuperada7d ?? "—"}
+              {formatCapacity(summary.capacitySum)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Trabajo automatizado
@@ -270,51 +323,16 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
         </Card>
       </section>
 
-      {error && !loading && (
-        <p className="text-sm text-rose-600">
-          No se pudo cargar la información. Intenta nuevamente más tarde.
-        </p>
-      )}
-
-      <section className="space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          Empleados digitales
-        </p>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {!hasEmployees && (
-            <Card className="border-dashed border-muted/80 bg-muted/30">
-              <CardContent className="pt-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-slate-200 bg-slate-50 text-slate-700"
-                  >
-                    Sin empleados activos
-                  </Badge>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                    Empieza aquí
-                  </span>
-                </div>
-                <h3 className="mt-4 text-lg font-semibold">
-                  Activa tu primer empleado
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Crea tu primer rol para empezar a automatizar y liberar
-                  capacidad operativa.
-                </p>
-                <div className="mt-4">
-                  <Button disabled size="sm">
-                    Activar empleado
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {hasEmployees &&
-            employees.map((employee) => {
-              const isActive =
-                activeOverrides[employee.id] ?? employee.isActive;
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Equipo
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {employees.map((employee) => {
+              const isActive = activeStatuses.includes(employee.status);
+              const primaryCtaLabel = getPrimaryCtaLabel(employee.status);
+              const availability = getAvailabilityLabel(employee.availability);
 
               return (
                 <Card key={employee.id} className="border-muted/80">
@@ -327,10 +345,10 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                         )}
                         variant="outline"
                       >
-                        {employee.status || "Inactivo"}
+                        {getStatusLabel(employee.status)}
                       </Badge>
                       <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                        Disponibilidad: {getAvailabilityLabel(employee.availability)}
+                        Disponibilidad: {availability}
                       </span>
                     </div>
 
@@ -339,7 +357,7 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                         {employee.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {employee.subtitle}
+                        {employee.responsibility}
                       </p>
                     </div>
 
@@ -349,18 +367,24 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                           Ingresos atribuidos
                         </p>
                         <p className="mt-2 text-lg font-semibold text-foreground">
-                          {employee.ingresosAtribuidos7d || "—"}
+                          {formatCurrency(employee.attributedRevenue7d)}
                         </p>
-                        <p className="text-xs text-muted-foreground">7 días</p>
+                        <p className="text-xs text-muted-foreground">
+                          {employee.attributedRevenue7d === undefined
+                            ? "Sin datos"
+                            : "7 días"}
+                        </p>
                       </div>
                       <div className="rounded-xl border border-muted/80 bg-muted/40 p-3">
                         <p className="text-xs text-muted-foreground">
                           Capacidad recuperada
                         </p>
                         <p className="mt-2 text-lg font-semibold text-foreground">
-                          {employee.capacidadRecuperada7d || "—"}
+                          {formatCapacity(employee.capacityRecovered7d)}
                         </p>
-                        <p className="text-xs text-muted-foreground">Estimado</p>
+                        <p className="text-xs text-muted-foreground">
+                          {getMetricHelper(employee.capacityRecovered7d)}
+                        </p>
                       </div>
                     </div>
 
@@ -368,21 +392,27 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                       {employee.description}
                     </p>
 
-                    <div className="mt-4 rounded-xl border border-dashed border-muted/80 bg-gradient-to-b from-primary/5 to-transparent p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                        Mensaje del empleado
-                      </p>
-                      <p className="mt-2 text-sm text-foreground">
-                        {employee.agentMessage || "—"}
-                      </p>
-                    </div>
-
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-muted/80 pt-4">
                       <div className="flex flex-wrap gap-2">
-                        <Button size="sm">
-                          {getPrimaryCtaLabel(employee.status)}
+                        <Button
+                          size="sm"
+                          onClick={getPrimaryCtaAction(
+                            employee.status,
+                            employee,
+                            onNavigate,
+                          )}
+                        >
+                          {primaryCtaLabel}
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            onNavigate?.(
+                              `empleados-digitales-${employee.id}-configuracion`,
+                            )
+                          }
+                        >
                           Configurar
                         </Button>
                       </div>
@@ -390,7 +420,9 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                         {isActive ? "Activo" : "Inactivo"}
                         <Switch
                           checked={isActive}
-                          onCheckedChange={() => handleToggleRequest(employee)}
+                          onCheckedChange={(checked) =>
+                            handleToggleRequest(employee, checked)
+                          }
                         />
                       </div>
                     </div>
@@ -398,37 +430,47 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
                 </Card>
               );
             })}
-
-          {hasEmployees && (
-            <Card className="border-dashed border-muted/80 bg-muted/30">
-              <CardContent className="pt-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-slate-200 bg-slate-50 text-slate-700"
-                  >
-                    Agregar empleado
-                  </Badge>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                    Disponible en plan Pro
-                  </span>
-                </div>
-                <h3 className="mt-4 text-lg font-semibold">
-                  Agrega otro empleado digital
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Escala tu equipo digital con un rol adicional. Este botón llevará
-                  a la sección de pago.
-                </p>
-                <div className="mt-4">
-                  <Button disabled size="sm">
-                    Ir a pago
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          </div>
         </div>
+
+        <aside className="space-y-4 xl:sticky xl:top-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Recomendaciones del equipo
+          </p>
+          <div className="space-y-3">
+            {recommendations.map((rec) => (
+              <Card key={rec.id} className="border-muted/80">
+                <CardContent className="border-l-4 border-primary/70 pt-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground">
+                      {rec.title}
+                    </p>
+                    <span className="rounded-full border border-muted/80 bg-muted/40 px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+                      {rec.urgency}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    {rec.description}
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      Resultado esperado:
+                    </span>{" "}
+                    {rec.expected}
+                  </p>
+                  <Button
+                    size="sm"
+                    className="mt-4 w-full"
+                    variant="outline"
+                    onClick={() => onNavigate?.(rec.target)}
+                  >
+                    {rec.cta}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </aside>
       </section>
 
       <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
@@ -436,8 +478,8 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
           <DialogHeader>
             <DialogTitle>
               {pendingToggle?.nextActive
-                ? "¿Activar a este empleado digital?"
-                : "¿Desactivar a este empleado digital?"}
+                ? "¿Activar este empleado digital?"
+                : "¿Desactivar este empleado digital?"}
             </DialogTitle>
             <DialogDescription>
               {pendingToggle?.nextActive
@@ -446,7 +488,7 @@ export function EmpleadosDigitales({}: EmpleadosDigitalesProps) {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleDialogChange(false)}>
+            <Button variant="outline" onClick={handleCloseDialog}>
               Cancelar
             </Button>
             <Button onClick={handleConfirmToggle}>
