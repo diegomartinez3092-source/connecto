@@ -100,7 +100,7 @@ export function EmpleadosDigitales({
   if (view === "empleados-digitales-vendedor-digital-entrenamiento") {
     return (
       <VendedorDigitalTrainingPage
-        onBack={() =>
+        onBackToPanel={() =>
           onNavigate?.("empleados-digitales-vendedor-digital-panel")
         }
       />
