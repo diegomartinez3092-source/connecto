@@ -453,7 +453,7 @@ export function VendedorDigitalPanel({
             disabled={!!emailError}
           >
             <Brain className="h-4 w-4" />
-            Entrenar al agente
+            Entrenar agente
           </Button>
           <Button
             variant="outline"
@@ -939,7 +939,7 @@ export function VendedorDigitalPanel({
               onClick={handleTrainClick}
             >
               <Brain className="h-4 w-4" />
-              Entrenar al agente
+              Entrenar agente
             </Button>
             <p className="text-xs text-muted-foreground">
               Te llevará al módulo de entrenamiento (próximamente).
