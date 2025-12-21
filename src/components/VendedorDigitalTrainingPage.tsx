@@ -464,6 +464,38 @@ const toggleListItem = (items: string[], value: string) =>
     ? items.filter((item) => item !== value)
     : [...items, value];
 
+const readJsonSafe = async <T,>(response: Response) => {
+  const rawText = await response.text();
+  try {
+    return { json: JSON.parse(rawText) as T, rawText };
+  } catch (error) {
+    return { json: null, rawText };
+  }
+};
+
+const normalizeConfig = (
+  incoming?: Partial<SalesAgentConfig> & {
+    followup?: Partial<SalesAgentConfig["followUp"]>;
+    payment?: Partial<SalesAgentConfig["billing"]>;
+  },
+) => {
+  if (!incoming) return incoming;
+  const normalized = { ...incoming } as Partial<SalesAgentConfig> & {
+    followup?: Partial<SalesAgentConfig["followUp"]>;
+    payment?: Partial<SalesAgentConfig["billing"]>;
+  };
+
+  if (normalized.followup && !normalized.followUp) {
+    normalized.followUp = normalized.followup;
+  }
+
+  if (normalized.payment && !normalized.billing) {
+    normalized.billing = normalized.payment;
+  }
+
+  return normalized;
+};
+
 export function VendedorDigitalTrainingPage({
   onBackToPanel,
 }: VendedorDigitalTrainingPageProps) {
@@ -494,6 +526,10 @@ export function VendedorDigitalTrainingPage({
   const [dirty, setDirty] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [bannedPhraseInput, setBannedPhraseInput] = useState("");
+  const [prefillDebug, setPrefillDebug] = useState<{
+    status: number | null;
+    rawText: string;
+  } | null>(null);
   const [whatsappRequestStatus, setWhatsappRequestStatus] = useState<
     string | null
   >(null);
@@ -505,6 +541,11 @@ export function VendedorDigitalTrainingPage({
   const trimmedChatHistory = useMemo(
     () => chatHistory.slice(-25),
     [chatHistory],
+  );
+
+  const debugMode = useMemo(
+    () => new URLSearchParams(window.location.search).get("debug") === "1",
+    [],
   );
 
   const markDirty = useCallback(() => {
@@ -557,18 +598,22 @@ export function VendedorDigitalTrainingPage({
           signal: controller.signal,
         });
 
-        const contentType = response.headers.get("content-type") ?? "";
-        let data: PrefillResponse | null = null;
+        const { json, rawText } =
+          await readJsonSafe<PrefillResponse>(response);
 
-        if (contentType.includes("application/json")) {
-          data = (await response.json()) as PrefillResponse;
-        }
+        setPrefillDebug({ status: response.status, rawText });
 
         if (!response.ok) {
           throw new Error("No se pudo precargar el entrenamiento");
         }
 
-        const nextData = data ?? {};
+        if (!json) {
+          setError("Respuesta OK pero sin JSON parseable");
+          setLoading(false);
+          return;
+        }
+
+        const nextData = json ?? {};
         setPrefill(nextData);
 
         const nextFiles = createCategoryRecord<TrainingFile | null>(null);
@@ -584,14 +629,15 @@ export function VendedorDigitalTrainingPage({
           escalationTriggers: nextData.guided?.escalationTriggers ?? [],
         });
 
-        const mergedConfig = mergeConfig(defaultConfig, nextData.config);
+        const normalized = normalizeConfig(nextData.config);
+        const mergedConfig = mergeConfig(defaultConfig, normalized);
         const resolvedWhatsappNumber =
-          nextData.config?.whatsapp?.number ??
+          normalized?.whatsapp?.number ??
           nextData.whatsapp?.number ??
           nextData.agent?.whatsappNumber ??
           null;
         const resolvedWhatsappStatus =
-          nextData.config?.whatsapp?.status ??
+          normalized?.whatsapp?.status ??
           nextData.whatsapp?.status ??
           null;
 
@@ -2316,6 +2362,39 @@ export function VendedorDigitalTrainingPage({
             </Card>
           </div>
         </div>
+      )}
+
+      {debugMode && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-sm">Debug</CardTitle>
+            <CardDescription>
+              Diagnóstico de prefill desde el webhook.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-xs text-muted-foreground">
+            <div>
+              <p className="font-semibold text-foreground">HTTP status</p>
+              <p>{prefillDebug?.status ?? "—"}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">rawText</p>
+              <p className="whitespace-pre-wrap">
+                {prefillDebug?.rawText
+                  ? prefillDebug.rawText.slice(0, 2000)
+                  : "—"}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">prefill</p>
+              <p className="whitespace-pre-wrap">
+                {prefill
+                  ? JSON.stringify(prefill, null, 2).slice(0, 2000)
+                  : "—"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
