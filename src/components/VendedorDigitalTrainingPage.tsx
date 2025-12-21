@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Download, Upload } from "lucide-react";
+import { ArrowLeft, Download, Upload, X } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ScrollArea } from "./ui/scroll-area";
@@ -28,6 +29,7 @@ import {
   SelectValue,
 } from "./ui/select";
 import { Switch } from "./ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Textarea } from "./ui/textarea";
 
 const WEBHOOK_URL =
@@ -58,6 +60,10 @@ type WebhookSavePayload = {
   agentId: string;
   text: TrainingText;
   guided: GuidedFields;
+};
+
+type WebhookSavePayloadWithConfig = WebhookSavePayload & {
+  config: SalesAgentConfig;
 };
 
 type WebhookChatPayload = {
@@ -101,14 +107,89 @@ type GuidedFields = {
   escalationTriggers: string[];
 };
 
+type SalesAgentConfig = {
+  profile: {
+    name: string;
+    useEmojis: boolean;
+    emojiLevel: "bajo" | "medio" | "alto";
+    responseLength: "corta" | "media" | "larga";
+    maxOptionsPerMsg: number;
+    bannedPhrases: string[];
+  };
+  ads: {
+    objective: string;
+    dailyCap: number;
+    monthlyCap: number;
+    canCreate: boolean;
+    canPause: boolean;
+    canReallocate: boolean;
+    canTarget: boolean;
+    autoPublish: boolean;
+    stopLoss: {
+      cpl: number;
+      hours: number;
+      action: string;
+    };
+  };
+  whatsapp: {
+    number: string | null;
+    status: string | null;
+    objective: string;
+    maxQuestions: number;
+    oneCtaPerMsg: boolean;
+    dataAllowed: string[];
+  };
+  quote: {
+    format: string;
+    validityDays: number;
+    taxMode: string;
+    canNegotiate: boolean;
+    negotiateMaxPct: number;
+    canPromiseDelivery: boolean;
+    template: string;
+  };
+  followUp: {
+    step1Hours: number;
+    step2Hours: number;
+    step3Days: number;
+    maxAttempts: number;
+    stopAfterDays: number;
+    closeMessage: string;
+    templates: string[];
+  };
+  billing: {
+    methods: string[];
+    canSendLink: boolean;
+    confirmAlwaysEscalate: boolean;
+    invoiceEscalate: boolean;
+    template: string;
+  };
+  escalation: {
+    amountThreshold: number;
+    summaryMode: string;
+    humanHours: string;
+    triggers: string[];
+    onComplaint: boolean;
+    onExceptions: boolean;
+    onSensitiveData: boolean;
+  };
+  advanced: {
+    instructionsPrompt: string;
+    workNotes: string;
+    securityPolicy: string;
+  };
+};
+
 type PrefillResponse = {
   ok?: boolean;
   meta?: { corte?: string };
-  agent?: { status?: string; availability?: string };
+  agent?: { status?: string; availability?: string; whatsappNumber?: string };
   files?: Partial<Record<Category, TrainingFile | null>>;
   text?: Partial<TrainingText>;
   guided?: Partial<GuidedFields>;
   chatHistory?: ChatMessage[];
+  config?: Partial<SalesAgentConfig>;
+  whatsapp?: { number?: string; status?: string };
 };
 
 type ChatMessage = {
@@ -120,12 +201,6 @@ type ChatMessage = {
 interface VendedorDigitalTrainingPageProps {
   onBackToPanel?: () => void;
 }
-
-type DebugInfo = {
-  payload: unknown;
-  status: number | null;
-  response: unknown;
-};
 
 const fileCategories: {
   key: Category;
@@ -168,6 +243,48 @@ const toneOptions = [
 
 const availabilityOptions = ["24/7", "Horario"];
 
+const emojiLevelOptions = ["bajo", "medio", "alto"] as const;
+const responseLengthOptions = ["corta", "media", "larga"] as const;
+
+const whatsappDataAllowedOptions = [
+  "nombre",
+  "ciudad",
+  "producto",
+  "cantidad",
+  "urgencia",
+  "presupuesto",
+  "envio",
+  "rfc",
+];
+
+const billingMethodsOptions = [
+  "transferencia",
+  "link",
+  "tarjeta",
+  "oxxo",
+  "efectivo",
+];
+
+const adsSwitches: {
+  label: string;
+  key: "canCreate" | "canPause" | "canReallocate" | "canTarget" | "autoPublish";
+}[] = [
+  { label: "Puede crear campañas", key: "canCreate" },
+  { label: "Puede pausar campañas", key: "canPause" },
+  { label: "Puede reasignar presupuesto", key: "canReallocate" },
+  { label: "Puede segmentar", key: "canTarget" },
+  { label: "Auto publicar", key: "autoPublish" },
+];
+
+const escalationSwitches: {
+  label: string;
+  key: "onComplaint" | "onExceptions" | "onSensitiveData";
+}[] = [
+  { label: "Escalar por quejas", key: "onComplaint" },
+  { label: "Escalar excepciones", key: "onExceptions" },
+  { label: "Escalar datos sensibles", key: "onSensitiveData" },
+];
+
 const defaultText: TrainingText = {
   faq: "",
   brand: "",
@@ -186,6 +303,79 @@ const defaultGuided: GuidedFields = {
   humanHours: "24/7",
   humanHoursDetail: "",
   escalationTriggers: [],
+};
+
+const defaultConfig: SalesAgentConfig = {
+  profile: {
+    name: "",
+    useEmojis: true,
+    emojiLevel: "medio",
+    responseLength: "media",
+    maxOptionsPerMsg: 3,
+    bannedPhrases: [],
+  },
+  ads: {
+    objective: "",
+    dailyCap: 0,
+    monthlyCap: 0,
+    canCreate: true,
+    canPause: true,
+    canReallocate: true,
+    canTarget: true,
+    autoPublish: false,
+    stopLoss: {
+      cpl: 0,
+      hours: 0,
+      action: "",
+    },
+  },
+  whatsapp: {
+    number: null,
+    status: null,
+    objective: "",
+    maxQuestions: 3,
+    oneCtaPerMsg: true,
+    dataAllowed: [],
+  },
+  quote: {
+    format: "",
+    validityDays: 0,
+    taxMode: "",
+    canNegotiate: false,
+    negotiateMaxPct: 0,
+    canPromiseDelivery: false,
+    template: "",
+  },
+  followUp: {
+    step1Hours: 4,
+    step2Hours: 24,
+    step3Days: 3,
+    maxAttempts: 3,
+    stopAfterDays: 10,
+    closeMessage: "",
+    templates: [],
+  },
+  billing: {
+    methods: [],
+    canSendLink: true,
+    confirmAlwaysEscalate: false,
+    invoiceEscalate: false,
+    template: "",
+  },
+  escalation: {
+    amountThreshold: 0,
+    summaryMode: "",
+    humanHours: "",
+    triggers: [],
+    onComplaint: true,
+    onExceptions: true,
+    onSensitiveData: true,
+  },
+  advanced: {
+    instructionsPrompt: "",
+    workNotes: "",
+    securityPolicy: "",
+  },
 };
 
 const createCategoryRecord = <T,>(value: T) =>
@@ -207,6 +397,12 @@ const getEscalationTriggersValue = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const getLinesValue = (value: string) =>
+  value
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 const decodeBase64ToBlob = (base64: string, mime: string) => {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
@@ -215,6 +411,58 @@ const decodeBase64ToBlob = (base64: string, mime: string) => {
   }
   return new Blob([bytes], { type: mime });
 };
+
+const mergeConfig = (
+  base: SalesAgentConfig,
+  update?: Partial<SalesAgentConfig>,
+): SalesAgentConfig => ({
+  profile: {
+    ...base.profile,
+    ...update?.profile,
+    bannedPhrases: update?.profile?.bannedPhrases ?? base.profile.bannedPhrases,
+  },
+  ads: {
+    ...base.ads,
+    ...update?.ads,
+    stopLoss: {
+      ...base.ads.stopLoss,
+      ...update?.ads?.stopLoss,
+    },
+  },
+  whatsapp: {
+    ...base.whatsapp,
+    ...update?.whatsapp,
+    dataAllowed: update?.whatsapp?.dataAllowed ?? base.whatsapp.dataAllowed,
+  },
+  quote: {
+    ...base.quote,
+    ...update?.quote,
+  },
+  followUp: {
+    ...base.followUp,
+    ...update?.followUp,
+    templates: update?.followUp?.templates ?? base.followUp.templates,
+  },
+  billing: {
+    ...base.billing,
+    ...update?.billing,
+    methods: update?.billing?.methods ?? base.billing.methods,
+  },
+  escalation: {
+    ...base.escalation,
+    ...update?.escalation,
+    triggers: update?.escalation?.triggers ?? base.escalation.triggers,
+  },
+  advanced: {
+    ...base.advanced,
+    ...update?.advanced,
+  },
+});
+
+const toggleListItem = (items: string[], value: string) =>
+  items.includes(value)
+    ? items.filter((item) => item !== value)
+    : [...items, value];
 
 export function VendedorDigitalTrainingPage({
   onBackToPanel,
@@ -229,6 +477,7 @@ export function VendedorDigitalTrainingPage({
   );
   const [text, setText] = useState<TrainingText>(defaultText);
   const [guided, setGuided] = useState<GuidedFields>(defaultGuided);
+  const [config, setConfig] = useState<SalesAgentConfig>(defaultConfig);
   const [selectedFiles, setSelectedFiles] = useState<
     Record<Category, File | null>
   >(createCategoryRecord<File | null>(null));
@@ -242,107 +491,137 @@ export function VendedorDigitalTrainingPage({
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [debugInfo, setDebugInfo] = useState<DebugInfo>({
-    payload: null,
-    status: null,
-    response: null,
-  });
+  const [dirty, setDirty] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [bannedPhraseInput, setBannedPhraseInput] = useState("");
+  const [whatsappRequestStatus, setWhatsappRequestStatus] = useState<
+    string | null
+  >(null);
+  const [whatsappRequestLoading, setWhatsappRequestLoading] = useState(false);
 
   const sentRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
-
-  const isDev = import.meta.env.DEV;
 
   const trimmedChatHistory = useMemo(
     () => chatHistory.slice(-25),
     [chatHistory],
   );
 
-  const updateDebug = useCallback(
-    (payload: unknown, status: number | null, response: unknown) => {
-      setDebugInfo({ payload, status, response });
+  const markDirty = useCallback(() => {
+    setDirty(true);
+    setValidationError(null);
+  }, []);
+
+  const updateConfig = useCallback(
+    (updater: (prev: SalesAgentConfig) => SalesAgentConfig) => {
+      setConfig((prev) => updater(prev));
+      markDirty();
+    },
+    [markDirty],
+  );
+
+  const sendPrefill = useCallback(
+    async (force = false) => {
+      if (sentRef.current && !force) return;
+      sentRef.current = true;
+
+      abortRef.current?.abort();
+
+      const storedEmail = localStorage.getItem("email");
+      setEmail(storedEmail);
+
+      if (!storedEmail) {
+        setMissingEmail(true);
+        setLoading(false);
+        setError("No se encontró el email de sesión. Inicia sesión de nuevo.");
+        return;
+      }
+
+      const payload: WebhookPrefillPayload = {
+        event: "training_prefill",
+        email: storedEmail,
+        agentId: AGENT_ID,
+      };
+
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+
+        const contentType = response.headers.get("content-type") ?? "";
+        let data: PrefillResponse | null = null;
+
+        if (contentType.includes("application/json")) {
+          data = (await response.json()) as PrefillResponse;
+        }
+
+        if (!response.ok) {
+          throw new Error("No se pudo precargar el entrenamiento");
+        }
+
+        const nextData = data ?? {};
+        setPrefill(nextData);
+
+        const nextFiles = createCategoryRecord<TrainingFile | null>(null);
+        fileCategories.forEach(({ key }) => {
+          nextFiles[key] = nextData.files?.[key] ?? null;
+        });
+        setFiles(nextFiles);
+
+        setText({ ...defaultText, ...nextData.text });
+        setGuided({
+          ...defaultGuided,
+          ...nextData.guided,
+          escalationTriggers: nextData.guided?.escalationTriggers ?? [],
+        });
+
+        const mergedConfig = mergeConfig(defaultConfig, nextData.config);
+        const resolvedWhatsappNumber =
+          nextData.config?.whatsapp?.number ??
+          nextData.whatsapp?.number ??
+          nextData.agent?.whatsappNumber ??
+          null;
+        const resolvedWhatsappStatus =
+          nextData.config?.whatsapp?.status ??
+          nextData.whatsapp?.status ??
+          null;
+
+        setConfig({
+          ...mergedConfig,
+          whatsapp: {
+            ...mergedConfig.whatsapp,
+            number: resolvedWhatsappNumber ?? mergedConfig.whatsapp.number,
+            status: resolvedWhatsappStatus ?? mergedConfig.whatsapp.status,
+          },
+        });
+
+        setChatHistory(nextData.chatHistory ?? []);
+        setDirty(false);
+        setValidationError(null);
+        setLoading(false);
+      } catch (err) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setError(
+          err instanceof Error
+            ? err.message
+            : "No se pudo precargar el entrenamiento",
+        );
+        setLoading(false);
+      }
     },
     [],
   );
-
-  const sendPrefill = useCallback(async () => {
-    if (sentRef.current) return;
-    sentRef.current = true;
-
-    abortRef.current?.abort();
-
-    const storedEmail = localStorage.getItem("email");
-    setEmail(storedEmail);
-
-    if (!storedEmail) {
-      setMissingEmail(true);
-      setLoading(false);
-      setError("No se encontró el email de sesión. Inicia sesión de nuevo.");
-      return;
-    }
-
-    const payload: WebhookPrefillPayload = {
-      event: "training_prefill",
-      email: storedEmail,
-      agentId: AGENT_ID,
-    };
-
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
-
-      const contentType = response.headers.get("content-type") ?? "";
-      let data: PrefillResponse | null = null;
-
-      if (contentType.includes("application/json")) {
-        data = (await response.json()) as PrefillResponse;
-      }
-
-      updateDebug(payload, response.status, data);
-
-      if (!response.ok) {
-        throw new Error("No se pudo precargar el entrenamiento");
-      }
-
-      const nextData = data ?? {};
-      setPrefill(nextData);
-
-      const nextFiles = createCategoryRecord<TrainingFile | null>(null);
-      fileCategories.forEach(({ key }) => {
-        nextFiles[key] = nextData.files?.[key] ?? null;
-      });
-      setFiles(nextFiles);
-
-      setText({ ...defaultText, ...nextData.text });
-      setGuided({
-        ...defaultGuided,
-        ...nextData.guided,
-        escalationTriggers: nextData.guided?.escalationTriggers ?? [],
-      });
-      setChatHistory(nextData.chatHistory ?? []);
-      setLoading(false);
-    } catch (err) {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setError(
-        err instanceof Error
-          ? err.message
-          : "No se pudo precargar el entrenamiento",
-      );
-      setLoading(false);
-    }
-  }, [updateDebug]);
 
   useEffect(() => {
     sendPrefill();
@@ -400,11 +679,6 @@ export function VendedorDigitalTrainingPage({
         ok?: boolean;
         file?: TrainingFile;
       };
-      updateDebug(
-        { event: "training_upload_file", category, email },
-        response.status,
-        data,
-      );
 
       if (!response.ok || !data.ok || !data.file) {
         throw new Error("No se pudo subir el archivo");
@@ -447,7 +721,6 @@ export function VendedorDigitalTrainingPage({
           ok?: boolean;
           file?: { name?: string; mime?: string; base64?: string };
         };
-        updateDebug(payload, response.status, data);
 
         if (!response.ok || !data.ok || !data.file?.base64) {
           throw new Error("No se pudo descargar el archivo");
@@ -469,7 +742,6 @@ export function VendedorDigitalTrainingPage({
       }
 
       const blob = await response.blob();
-      updateDebug(payload, response.status, { binary: true });
 
       if (!response.ok) {
         throw new Error("No se pudo descargar el archivo");
@@ -494,6 +766,16 @@ export function VendedorDigitalTrainingPage({
   const handleSave = async () => {
     if (!email) return;
 
+    if (!config.profile.name.trim()) {
+      setValidationError("El nombre visible es obligatorio.");
+      return;
+    }
+
+    if (config.profile.maxOptionsPerMsg < 1) {
+      setValidationError("El máximo de opciones por mensaje debe ser mayor a 0.");
+      return;
+    }
+
     if (prefill) {
       const confirmed = window.confirm(
         "Esto sobrescribirá el entrenamiento actual. ¿Deseas continuar?",
@@ -501,12 +783,13 @@ export function VendedorDigitalTrainingPage({
       if (!confirmed) return;
     }
 
-    const payload: WebhookSavePayload = {
+    const payload: WebhookSavePayloadWithConfig = {
       event: "training_save",
       email,
       agentId: AGENT_ID,
       text,
       guided,
+      config,
     };
 
     setSaving(true);
@@ -521,13 +804,13 @@ export function VendedorDigitalTrainingPage({
         ok?: boolean;
         message?: string;
       };
-      updateDebug(payload, response.status, data);
 
       if (!response.ok || !data.ok) {
         throw new Error(data.message || "No se pudo guardar");
       }
 
       window.alert(data.message ?? "Entrenamiento guardado");
+      setDirty(false);
     } catch (err) {
       window.alert(err instanceof Error ? err.message : "No se pudo guardar");
     } finally {
@@ -558,7 +841,6 @@ export function VendedorDigitalTrainingPage({
         reply?: string;
         chatHistory?: ChatMessage[];
       };
-      updateDebug(payload, response.status, data);
 
       if (!response.ok || !data.ok) {
         throw new Error("No se pudo enviar el mensaje");
@@ -584,8 +866,62 @@ export function VendedorDigitalTrainingPage({
     }
   };
 
-  const statusLabel = prefill?.agent?.status ?? "En configuración";
-  const availabilityLabel = prefill?.agent?.availability ?? "—";
+  const handleBannedPhraseAdd = () => {
+    const value = bannedPhraseInput.trim();
+    if (!value) return;
+
+    updateConfig((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        bannedPhrases: prev.profile.bannedPhrases.includes(value)
+          ? prev.profile.bannedPhrases
+          : [...prev.profile.bannedPhrases, value],
+      },
+    }));
+    setBannedPhraseInput("");
+  };
+
+  const handleWhatsappRequest = async () => {
+    if (!email) return;
+
+    setWhatsappRequestLoading(true);
+    setWhatsappRequestStatus(null);
+
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "training_whatsapp_request",
+          email,
+          agentId: AGENT_ID,
+        }),
+      });
+
+      const contentType = response.headers.get("content-type") ?? "";
+      const data = contentType.includes("application/json")
+        ? ((await response.json()) as { ok?: boolean; message?: string })
+        : null;
+
+      if (!response.ok || !data?.ok) {
+        setWhatsappRequestStatus(
+          "El backend aún no soporta solicitud de alta",
+        );
+        return;
+      }
+
+      setWhatsappRequestStatus(
+        data.message ?? "Solicitud enviada. Te avisaremos cuando esté listo.",
+      );
+      sentRef.current = false;
+      await sendPrefill(true);
+    } catch (err) {
+      setWhatsappRequestStatus("El backend aún no soporta solicitud de alta");
+    } finally {
+      setWhatsappRequestLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -615,7 +951,7 @@ export function VendedorDigitalTrainingPage({
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={onBackToPanel}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver al panel
@@ -623,6 +959,7 @@ export function VendedorDigitalTrainingPage({
           <Button onClick={handleSave} disabled={saving || missingEmail}>
             Guardar entrenamiento
           </Button>
+          {dirty && <Badge variant="secondary">Cambios sin guardar</Badge>}
         </div>
       </header>
 
@@ -634,9 +971,944 @@ export function VendedorDigitalTrainingPage({
         </Card>
       )}
 
+      {error && !missingEmail && (
+        <Card className="border-rose-200 bg-rose-50">
+          <CardContent className="py-4 text-sm text-rose-700">
+            {error}
+          </CardContent>
+        </Card>
+      )}
+
       {!missingEmail && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
           <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Configuración del Agente de Ventas</CardTitle>
+                <CardDescription>
+                  Ajusta el comportamiento del agente en cada etapa.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Tabs defaultValue="identidad">
+                  <TabsList className="flex flex-wrap gap-2">
+                    <TabsTrigger value="identidad">Identidad</TabsTrigger>
+                    <TabsTrigger value="ads">Ads</TabsTrigger>
+                    <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+                    <TabsTrigger value="cotizacion">Cotización</TabsTrigger>
+                    <TabsTrigger value="seguimiento">Seguimiento</TabsTrigger>
+                    <TabsTrigger value="cobro">Cobro</TabsTrigger>
+                    <TabsTrigger value="escalamiento">Escalamiento</TabsTrigger>
+                    <TabsTrigger value="avanzado">Avanzado</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="identidad" className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Nombre visible</Label>
+                        <Input
+                          value={config.profile.name}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              profile: {
+                                ...prev.profile,
+                                name: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Usar emojis
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Controla si el agente responde con emojis.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={config.profile.useEmojis}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              profile: {
+                                ...prev.profile,
+                                useEmojis: checked,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nivel de emojis</Label>
+                        <Select
+                          value={config.profile.emojiLevel}
+                          onValueChange={(value) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              profile: {
+                                ...prev.profile,
+                                emojiLevel: value as
+                                  | "bajo"
+                                  | "medio"
+                                  | "alto",
+                              },
+                            }))
+                          }
+                          disabled={!config.profile.useEmojis}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {emojiLevelOptions.map((level) => (
+                              <SelectItem key={level} value={level}>
+                                {level}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Longitud de respuesta</Label>
+                        <Select
+                          value={config.profile.responseLength}
+                          onValueChange={(value) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              profile: {
+                                ...prev.profile,
+                                responseLength: value as
+                                  | "corta"
+                                  | "media"
+                                  | "larga",
+                              },
+                            }))
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {responseLengthOptions.map((length) => (
+                              <SelectItem key={length} value={length}>
+                                {length}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Máximo de opciones por mensaje</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={config.profile.maxOptionsPerMsg}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              profile: {
+                                ...prev.profile,
+                                maxOptionsPerMsg: Number(
+                                  event.target.value || 0,
+                                ),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Frases prohibidas</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {config.profile.bannedPhrases.map((phrase) => (
+                            <Badge
+                              key={phrase}
+                              variant="secondary"
+                              className="flex items-center gap-1"
+                            >
+                              {phrase}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  updateConfig((prev) => ({
+                                    ...prev,
+                                    profile: {
+                                      ...prev.profile,
+                                      bannedPhrases: prev.profile.bannedPhrases.filter(
+                                        (item) => item !== phrase,
+                                      ),
+                                    },
+                                  }))
+                                }
+                                className="ml-1 text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                          <Input
+                            value={bannedPhraseInput}
+                            onChange={(event) =>
+                              setBannedPhraseInput(event.target.value)
+                            }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.preventDefault();
+                                handleBannedPhraseAdd();
+                              }
+                            }}
+                            placeholder="Agregar frase y presiona Enter"
+                          />
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={handleBannedPhraseAdd}
+                          >
+                            Agregar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="ads" className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Objetivo de Ads</Label>
+                        <Input
+                          value={config.ads.objective}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: { ...prev.ads, objective: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tope diario</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.ads.dailyCap}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: {
+                                ...prev.ads,
+                                dailyCap: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tope mensual</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.ads.monthlyCap}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: {
+                                ...prev.ads,
+                                monthlyCap: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Acción de stop loss</Label>
+                        <Input
+                          value={config.ads.stopLoss.action}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: {
+                                ...prev.ads,
+                                stopLoss: {
+                                  ...prev.ads.stopLoss,
+                                  action: event.target.value,
+                                },
+                              },
+                            }))
+                          }
+                          placeholder="Ej: Pausar campañas"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Stop loss CPL</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.ads.stopLoss.cpl}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: {
+                                ...prev.ads,
+                                stopLoss: {
+                                  ...prev.ads.stopLoss,
+                                  cpl: Number(event.target.value || 0),
+                                },
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Stop loss horas</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.ads.stopLoss.hours}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              ads: {
+                                ...prev.ads,
+                                stopLoss: {
+                                  ...prev.ads.stopLoss,
+                                  hours: Number(event.target.value || 0),
+                                },
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {adsSwitches.map((item) => (
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2"
+                        >
+                          <p className="text-sm font-medium text-foreground">
+                            {item.label}
+                          </p>
+                          <Switch
+                            checked={config.ads[item.key]}
+                            onCheckedChange={(checked) =>
+                              updateConfig((prev) => ({
+                                ...prev,
+                                ads: {
+                                  ...prev.ads,
+                                  [item.key]: checked,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="whatsapp" className="space-y-4">
+                    <Card className="border border-muted/60">
+                      <CardContent className="space-y-2 py-4">
+                        <p className="text-sm font-semibold text-foreground">
+                          Número asignado
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {config.whatsapp.number || "Sin número asignado"}
+                        </p>
+                        {config.whatsapp.status && (
+                          <p className="text-xs text-muted-foreground">
+                            Estado: {config.whatsapp.status}
+                          </p>
+                        )}
+                        {!config.whatsapp.number && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={handleWhatsappRequest}
+                              disabled={whatsappRequestLoading}
+                            >
+                              {whatsappRequestLoading
+                                ? "Solicitando..."
+                                : "Solicitar alta"}
+                            </Button>
+                            {whatsappRequestStatus && (
+                              <span className="text-xs text-muted-foreground">
+                                {whatsappRequestStatus}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {config.whatsapp.number && whatsappRequestStatus && (
+                          <p className="text-xs text-muted-foreground">
+                            {whatsappRequestStatus}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Objetivo WhatsApp</Label>
+                        <Input
+                          value={config.whatsapp.objective}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              whatsapp: {
+                                ...prev.whatsapp,
+                                objective: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Máximo de preguntas</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.whatsapp.maxQuestions}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              whatsapp: {
+                                ...prev.whatsapp,
+                                maxQuestions: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2 md:col-span-2">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            Un CTA por mensaje
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Controla el foco en WhatsApp.
+                          </p>
+                        </div>
+                        <Switch
+                          checked={config.whatsapp.oneCtaPerMsg}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              whatsapp: {
+                                ...prev.whatsapp,
+                                oneCtaPerMsg: checked,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <Label>Datos permitidos</Label>
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {whatsappDataAllowedOptions.map((option) => (
+                            <label
+                              key={option}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Checkbox
+                                checked={config.whatsapp.dataAllowed.includes(
+                                  option,
+                                )}
+                                onCheckedChange={() =>
+                                  updateConfig((prev) => ({
+                                    ...prev,
+                                    whatsapp: {
+                                      ...prev.whatsapp,
+                                      dataAllowed: toggleListItem(
+                                        prev.whatsapp.dataAllowed,
+                                        option,
+                                      ),
+                                    },
+                                  }))
+                                }
+                              />
+                              {option}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="cotizacion" className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Formato de cotización</Label>
+                        <Input
+                          value={config.quote.format}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: { ...prev.quote, format: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Días de vigencia</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.quote.validityDays}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: {
+                                ...prev.quote,
+                                validityDays: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Modo de impuestos</Label>
+                        <Input
+                          value={config.quote.taxMode}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: { ...prev.quote, taxMode: event.target.value },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Negociación máxima (%)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.quote.negotiateMaxPct}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: {
+                                ...prev.quote,
+                                negotiateMaxPct: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Puede negociar
+                        </p>
+                        <Switch
+                          checked={config.quote.canNegotiate}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: { ...prev.quote, canNegotiate: checked },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Puede prometer entrega
+                        </p>
+                        <Switch
+                          checked={config.quote.canPromiseDelivery}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              quote: {
+                                ...prev.quote,
+                                canPromiseDelivery: checked,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Plantilla de cotización</Label>
+                      <Textarea
+                        value={config.quote.template}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            quote: { ...prev.quote, template: event.target.value },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="seguimiento" className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Horas para primer seguimiento</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.followUp.step1Hours}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              followUp: {
+                                ...prev.followUp,
+                                step1Hours: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Horas para segundo seguimiento</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.followUp.step2Hours}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              followUp: {
+                                ...prev.followUp,
+                                step2Hours: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Días para tercer seguimiento</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.followUp.step3Days}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              followUp: {
+                                ...prev.followUp,
+                                step3Days: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Intentos máximos</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.followUp.maxAttempts}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              followUp: {
+                                ...prev.followUp,
+                                maxAttempts: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Días para detener seguimiento</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.followUp.stopAfterDays}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              followUp: {
+                                ...prev.followUp,
+                                stopAfterDays: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Mensaje de cierre</Label>
+                      <Textarea
+                        value={config.followUp.closeMessage}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            followUp: {
+                              ...prev.followUp,
+                              closeMessage: event.target.value,
+                            },
+                          }))
+                        }
+                        rows={3}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Templates de seguimiento (una por línea)</Label>
+                      <Textarea
+                        value={config.followUp.templates.join("\n")}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            followUp: {
+                              ...prev.followUp,
+                              templates: getLinesValue(event.target.value),
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="cobro" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Métodos de cobro</Label>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {billingMethodsOptions.map((method) => (
+                          <label
+                            key={method}
+                            className="flex items-center gap-2 text-sm"
+                          >
+                            <Checkbox
+                              checked={config.billing.methods.includes(method)}
+                              onCheckedChange={() =>
+                                updateConfig((prev) => ({
+                                  ...prev,
+                                  billing: {
+                                    ...prev.billing,
+                                    methods: toggleListItem(
+                                      prev.billing.methods,
+                                      method,
+                                    ),
+                                  },
+                                }))
+                              }
+                            />
+                            {method}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Puede enviar link de pago
+                        </p>
+                        <Switch
+                          checked={config.billing.canSendLink}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              billing: { ...prev.billing, canSendLink: checked },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Confirmación siempre escala
+                        </p>
+                        <Switch
+                          checked={config.billing.confirmAlwaysEscalate}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              billing: {
+                                ...prev.billing,
+                                confirmAlwaysEscalate: checked,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Escalar facturación
+                        </p>
+                        <Switch
+                          checked={config.billing.invoiceEscalate}
+                          onCheckedChange={(checked) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              billing: {
+                                ...prev.billing,
+                                invoiceEscalate: checked,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Plantilla de cobro</Label>
+                      <Textarea
+                        value={config.billing.template}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            billing: {
+                              ...prev.billing,
+                              template: event.target.value,
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="escalamiento" className="space-y-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label>Monto mínimo para escalar</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={config.escalation.amountThreshold}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              escalation: {
+                                ...prev.escalation,
+                                amountThreshold: Number(event.target.value || 0),
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Modo de resumen</Label>
+                        <Input
+                          value={config.escalation.summaryMode}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              escalation: {
+                                ...prev.escalation,
+                                summaryMode: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Horario humano</Label>
+                        <Input
+                          value={config.escalation.humanHours}
+                          onChange={(event) =>
+                            updateConfig((prev) => ({
+                              ...prev,
+                              escalation: {
+                                ...prev.escalation,
+                                humanHours: event.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Disparadores (una por línea)</Label>
+                      <Textarea
+                        value={config.escalation.triggers.join("\n")}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            escalation: {
+                              ...prev.escalation,
+                              triggers: getLinesValue(event.target.value),
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {escalationSwitches.map((item) => (
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2"
+                        >
+                          <p className="text-sm font-medium text-foreground">
+                            {item.label}
+                          </p>
+                          <Switch
+                            checked={config.escalation[item.key]}
+                            onCheckedChange={(checked) =>
+                              updateConfig((prev) => ({
+                                ...prev,
+                                escalation: {
+                                  ...prev.escalation,
+                                  [item.key]: checked,
+                                },
+                              }))
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="avanzado" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Instructions prompt</Label>
+                      <Textarea
+                        value={config.advanced.instructionsPrompt}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            advanced: {
+                              ...prev.advanced,
+                              instructionsPrompt: event.target.value,
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Work notes</Label>
+                      <Textarea
+                        value={config.advanced.workNotes}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            advanced: {
+                              ...prev.advanced,
+                              workNotes: event.target.value,
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Security policy</Label>
+                      <Textarea
+                        value={config.advanced.securityPolicy}
+                        onChange={(event) =>
+                          updateConfig((prev) => ({
+                            ...prev,
+                            advanced: {
+                              ...prev.advanced,
+                              securityPolicy: event.target.value,
+                            },
+                          }))
+                        }
+                        rows={4}
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle>Archivos de entrenamiento</CardTitle>
@@ -667,9 +1939,7 @@ export function VendedorDigitalTrainingPage({
                             <Badge variant="outline">
                               {fileInfo ? "Cargado" : "Sin archivo"}
                             </Badge>
-                            {fileInfo?.name && (
-                              <span>{fileInfo.name}</span>
-                            )}
+                            {fileInfo?.name && <span>{fileInfo.name}</span>}
                             {fileInfo?.sizeBytes && (
                               <span>{formatFileSize(fileInfo.sizeBytes)}</span>
                             )}
@@ -733,12 +2003,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>FAQ</Label>
                     <Textarea
                       value={text.faq}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           faq: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -746,12 +2017,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>Datos de la marca</Label>
                     <Textarea
                       value={text.brand}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           brand: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -759,12 +2031,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>Lista de artículos</Label>
                     <Textarea
                       value={text.items}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           items: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -772,12 +2045,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>Reglas de escalamiento</Label>
                     <Textarea
                       value={text.escalationRules}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           escalationRules: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -785,12 +2059,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>Promociones</Label>
                     <Textarea
                       value={text.promos}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           promos: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -798,12 +2073,13 @@ export function VendedorDigitalTrainingPage({
                     <Label>Instrucciones generales</Label>
                     <Textarea
                       value={text.instructionsPrompt}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        markDirty();
                         setText((prev) => ({
                           ...prev,
                           instructionsPrompt: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                     />
                   </div>
@@ -818,9 +2094,10 @@ export function VendedorDigitalTrainingPage({
                       <Label>Tono del agente</Label>
                       <Select
                         value={guided.tone}
-                        onValueChange={(value) =>
-                          setGuided((prev) => ({ ...prev, tone: value }))
-                        }
+                        onValueChange={(value) => {
+                          markDirty();
+                          setGuided((prev) => ({ ...prev, tone: value }));
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona un tono" />
@@ -838,12 +2115,13 @@ export function VendedorDigitalTrainingPage({
                       <Label>Objetivo principal</Label>
                       <Input
                         value={guided.mainObjective}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             mainObjective: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                         placeholder="Ej: Convertir leads en cotizaciones"
                       />
                     </div>
@@ -851,12 +2129,13 @@ export function VendedorDigitalTrainingPage({
                       <Label>CTA principal</Label>
                       <Input
                         value={guided.primaryCta}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             primaryCta: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                         placeholder="Ej: Agendar llamada con ventas"
                       />
                     </div>
@@ -866,12 +2145,13 @@ export function VendedorDigitalTrainingPage({
                         type="number"
                         min={1}
                         value={guided.maxOptionsPerMsg}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             maxOptionsPerMsg: Number(event.target.value || 0),
-                          }))
-                        }
+                          }));
+                        }}
                       />
                     </div>
                     <div className="flex items-center justify-between rounded-lg border border-muted/60 px-3 py-2">
@@ -885,24 +2165,26 @@ export function VendedorDigitalTrainingPage({
                       </div>
                       <Switch
                         checked={guided.oneCtaPerMsg}
-                        onCheckedChange={(checked) =>
+                        onCheckedChange={(checked) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             oneCtaPerMsg: checked,
-                          }))
-                        }
+                          }));
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label>Horario humano</Label>
                       <Select
                         value={guided.humanHours}
-                        onValueChange={(value) =>
+                        onValueChange={(value) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             humanHours: value,
-                          }))
-                        }
+                          }));
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecciona" />
@@ -920,12 +2202,13 @@ export function VendedorDigitalTrainingPage({
                       <Label>Detalle del horario humano</Label>
                       <Input
                         value={guided.humanHoursDetail}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             humanHoursDetail: event.target.value,
-                          }))
-                        }
+                          }));
+                        }}
                         placeholder="Ej: Lun-Vie 9:00-18:00"
                       />
                     </div>
@@ -933,14 +2216,15 @@ export function VendedorDigitalTrainingPage({
                       <Label>Disparadores de escalamiento</Label>
                       <Textarea
                         value={guided.escalationTriggers.join("\n")}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          markDirty();
                           setGuided((prev) => ({
                             ...prev,
                             escalationTriggers: getEscalationTriggersValue(
                               event.target.value,
                             ),
-                          }))
-                        }
+                          }));
+                        }}
                         rows={3}
                         placeholder="Una regla por línea"
                       />
@@ -949,6 +2233,14 @@ export function VendedorDigitalTrainingPage({
                 </div>
               </CardContent>
             </Card>
+
+            {validationError && (
+              <Card className="border-rose-200 bg-rose-50">
+                <CardContent className="py-4 text-sm text-rose-700">
+                  {validationError}
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardContent className="flex flex-col gap-3 py-6 md:flex-row md:items-center md:justify-between">
@@ -960,40 +2252,17 @@ export function VendedorDigitalTrainingPage({
                     Guarda los textos y reglas actuales.
                   </p>
                 </div>
-                <Button onClick={handleSave} disabled={saving || loading}>
-                  {saving ? "Guardando..." : "Guardar entrenamiento"}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button onClick={handleSave} disabled={saving || loading}>
+                    {saving ? "Guardando..." : "Guardar entrenamiento"}
+                  </Button>
+                  {dirty && <Badge variant="secondary">Cambios sin guardar</Badge>}
+                </div>
               </CardContent>
             </Card>
           </div>
 
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Estado operativo</CardTitle>
-                <CardDescription>
-                  Último corte recibido del webhook.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">Estado: {statusLabel}</Badge>
-                  <Badge variant="secondary">
-                    Disponibilidad: {availabilityLabel}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Corte: {prefill?.meta?.corte ?? "—"}
-                </p>
-                {loading && (
-                  <p className="text-xs text-muted-foreground">Cargando…</p>
-                )}
-                {error && (
-                  <p className="text-xs text-rose-600">{error}</p>
-                )}
-              </CardContent>
-            </Card>
-
             <Card className="h-full">
               <CardHeader>
                 <CardTitle>Chat de prueba</CardTitle>
@@ -1047,35 +2316,6 @@ export function VendedorDigitalTrainingPage({
             </Card>
           </div>
         </div>
-      )}
-
-      {isDev && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-sm">Debug</CardTitle>
-            <CardDescription>
-              Datos enviados y respuesta del webhook en desarrollo.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-xs text-muted-foreground">
-            <p>
-              <span className="font-semibold text-foreground">Email:</span>{" "}
-              {email ?? "—"}
-            </p>
-            <p>
-              <span className="font-semibold text-foreground">Payload:</span>{" "}
-              {debugInfo.payload ? JSON.stringify(debugInfo.payload) : "—"}
-            </p>
-            <p>
-              <span className="font-semibold text-foreground">Status:</span>{" "}
-              {debugInfo.status ?? "—"}
-            </p>
-            <p>
-              <span className="font-semibold text-foreground">Respuesta:</span>{" "}
-              {debugInfo.response ? JSON.stringify(debugInfo.response) : "—"}
-            </p>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
